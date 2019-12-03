@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.2" />
+<title>keras_nlp.test.unit.preprocessing.test_sentWordVectorizer API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>keras_nlp.test.unit.preprocessing.test_sentWordVectorizer</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import numpy as np
+from unittest import TestCase
+
+from keras_nlp.preprocessing.text import SentWordVectorizer
+
+DOC0 = &#39;Plasma samples were obtained and analysed with time-resolved &#39; \
+       &#39;immunofluorometric assays determining the plasma levels of MAp44, &#39; \
+       &#39;MASP-1, and MASP-3. &#39; \
+       &#39;MI patients had 18 % higher plasma levels of MAp44 (IQR 11-25 %) as &#39; \
+       &#39;compared to the healthy control group (p &lt; 0.001). &#39; \
+       &#39;However, neither salvage index (Spearman rho -0.1, p = 0.28) nor &#39; \
+       &#39;final infarct size (Spearman rho 0.02, p = 0.83) correlated with &#39; \
+       &#39;plasma levels of MAp44.&#39;
+DOC1 = &#39;Three hundred seventy-eight adolescents ( M age=15.5 years, SD=1.2; &#39; \
+       &#39;68% female, 72% White) with elevated self-assessed depressive &#39; \
+       &#39;symptoms were randomized to a 6-session CB group, minimal contact &#39; \
+       &#39;CB bibliotherapy, or educational brochure control. &#39; \
+       &#39;Participants were assessed at pretest, posttest, and 6-month &#39; \
+       &#39;follow-up. CB group participants showed a significantly lower risk &#39; \
+       &#39;for major depressive disorder onset (0.8%), compared to both CB &#39; \
+       &#39;bibliotherapy (6.3%) and brochure control (6.5%; hazard ratio=8.1 &#39; \
+       &#39;and 8.3, respectively).&#39;
+DOCS = [DOC0, DOC1]
+
+SMALL_MAX_SENTENCES, SMALL_MAX_WORDS = 2, 5
+# SWC: SMALL_WORDS, TPOST: TRUNCATING POST
+DOC0_SW_TPOST = [[&#39;plasma&#39;, &#39;samples&#39;, &#39;were&#39;, &#39;obtained&#39;, &#39;and&#39;],
+                 [&#39;mi&#39;, &#39;patients&#39;, &#39;had&#39;, &#39;18&#39;, &#39;higher&#39;]]
+DOC1_SW_TPOST = [[&#39;three&#39;, &#39;hundred&#39;, &#39;seventy&#39;, &#39;eight&#39;, &#39;adolescents&#39;],
+                 [&#39;participants&#39;, &#39;were&#39;, &#39;assessed&#39;, &#39;at&#39;, &#39;pretest&#39;]]
+# SWC: SMALL_WORDS_CHARS, TPRE: TRUNCATING PRE
+DOC0_SW_TPRE = [[&#39;control&#39;, &#39;group&#39;, &#39;p&#39;, &#39;0&#39;, &#39;001&#39;],
+                [&#39;with&#39;, &#39;plasma&#39;, &#39;levels&#39;, &#39;of&#39;, &#39;map44&#39;]]
+DOC1_SW_TPRE = [[&#39;and&#39;, &#39;6&#39;, &#39;month&#39;, &#39;follow&#39;, &#39;up&#39;],
+                [&#39;1&#39;, &#39;and&#39;, &#39;8&#39;, &#39;3&#39;, &#39;respectively&#39;]]
+
+LARGE_MAX_SENTENCES, LARGE_MAX_WORDS = 5, 100
+
+
+class TestSentWordVectorizer(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.sent_tokenize = sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def test_texts_to_sequences(self):
+        vectors = self.vectorizer.texts_to_vectors(DOCS)
+        docs_stats, sents_stats, words_stats = self.vectorizer.stats()
+        shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
+        self.assertEqual(vectors.shape, shape)
+
+    def test_sequences_to_text(self):
+        vectors = self.vectorizer.texts_to_vectors(DOCS)
+        docs = self.vectorizer.vectors_to_texts(vectors)
+        expected_docs = []
+        for doc in DOCS:
+            _doc = []
+            sentences = self.sent_tokenize(doc)
+            for sentence in sentences:
+                _doc.append(self.vectorizer._apply_filters(sentence).split())
+            expected_docs.append(_doc)
+        self.assertListEqual(docs, expected_docs)
+
+
+class TestSentWordVectorizerWithSmallValues(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def test_sequences_to_text_truncating_post(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+            padding=&#39;pre&#39;,
+            truncating=&#39;post&#39;)
+        result = self.vectorizer.vectors_to_texts(vectors)
+        expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
+        self.assertListEqual(result, expected)
+
+    def test_sequences_to_text_truncating_pre(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+            padding=&#39;pre&#39;,
+            truncating=&#39;pre&#39;)
+        result = self.vectorizer.vectors_to_texts(vectors)
+        expected = [DOC0_SW_TPRE, DOC1_SW_TPRE]
+        self.assertListEqual(result, expected)
+
+
+class TestSentWordVectorizerWithLargeValues(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.sent_tokenize = sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def expected_vector(self, doc):
+        # Length of sentences of DOC0.
+        sents = self.sent_tokenize(doc)
+        sent_len = len(sents)
+        # LARGE_MAX_SENTENCES must be at least by 1 larger from the total
+        # sentences of the document, to test padding.
+        num_zero_sentences = LARGE_MAX_SENTENCES - sent_len
+        if num_zero_sentences &lt; 1:
+            self.fail(&#39;Unable to test padding. &#39;
+                      &#39;Total number of sentences in `vectors` is equal or &#39;
+                      &#39;less than `LARGE_MAX_SENTENCES`. &#39;
+                      &#39;Increase `LARGE_MAX_SENTENCES`.&#39;)
+        # Expected padded vector with padding `pre` should have the shape
+        # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
+        expected_padded_vector = np.full(
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+        return expected_padded_vector
+
+    def test_text_to_sequences_padding_pre(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            padding=&#39;pre&#39;)
+        expected_padded_vector = self.expected_vector(DOC0)
+        test_vector = vectors[0][0]  # Doc 0, sentence 0
+        equiv = np.array_equiv(test_vector, expected_padded_vector)
+        self.assertTrue(equiv)
+
+    def test_text_to_sequences_padding_post(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            padding=&#39;post&#39;)
+        expected_padded_vector = self.expected_vector(DOC0)
+        test_vector = vectors[0][-1]  # Doc 0, last sentence
+        equiv = np.array_equiv(test_vector, expected_padded_vector)
+        self.assertTrue(equiv)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer"><code class="flex name class">
+<span>class <span class="ident">TestSentWordVectorizer</span></span>
+<span>(</span><span>methodName='runTest')</span>
+</code></dt>
+<dd>
+<section class="desc"><p>A class whose instances are single test cases.</p>
+<p>By default, the test code itself should be placed in a method named
+'runTest'.</p>
+<p>If the fixture may be used for many test cases, create as
+many test methods as are needed. When instantiating such a TestCase
+subclass, specify in the constructor arguments the name of the test method
+that the instance is to execute.</p>
+<p>Test authors should subclass TestCase for their own tests. Construction
+and deconstruction of the test's environment ('fixture') can be
+implemented by overriding the 'setUp' and 'tearDown' methods respectively.</p>
+<p>If it is necessary to override the <strong>init</strong> method, the base class
+<strong>init</strong> method must always be called. It is important that subclasses
+should not change the signature of their <strong>init</strong> method, since instances
+of the classes are instantiated automatically by parts of the framework
+in order to be run.</p>
+<p>When subclassing TestCase, you can set these attributes:
+<em> failureException: determines which exception will be raised when
+the instance's assertion methods fail; test methods raising this
+exception will be deemed to have 'failed' rather than 'errored'.
+</em> longMessage: determines whether long messages (including repr of
+objects used in assert methods) will be printed on failure in <em>addition</em>
+to any explicit message passed.
+* maxDiff: sets the maximum length of a diff in failure messages
+by assert methods using difflib. It is looked up as an instance
+attribute so can be configured by individual tests if required.</p>
+<p>Create an instance of the class that will use the named test
+method when executed. Raises a ValueError if the instance does
+not have a method with the specified name.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TestSentWordVectorizer(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.sent_tokenize = sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def test_texts_to_sequences(self):
+        vectors = self.vectorizer.texts_to_vectors(DOCS)
+        docs_stats, sents_stats, words_stats = self.vectorizer.stats()
+        shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
+        self.assertEqual(vectors.shape, shape)
+
+    def test_sequences_to_text(self):
+        vectors = self.vectorizer.texts_to_vectors(DOCS)
+        docs = self.vectorizer.vectors_to_texts(vectors)
+        expected_docs = []
+        for doc in DOCS:
+            _doc = []
+            sentences = self.sent_tokenize(doc)
+            for sentence in sentences:
+                _doc.append(self.vectorizer._apply_filters(sentence).split())
+            expected_docs.append(_doc)
+        self.assertListEqual(docs, expected_docs)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>unittest.case.TestCase</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.setUp"><code class="name flex">
+<span>def <span class="ident">setUp</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Hook method for setting up the test fixture before exercising it.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def setUp(self) -&gt; None:
+    from nltk import sent_tokenize
+    self.sent_tokenize = sent_tokenize
+    self.vectorizer = SentWordVectorizer(sent_tokenize)
+    self.vectorizer.fit_on_texts(DOCS)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text"><code class="name flex">
+<span>def <span class="ident">test_sequences_to_text</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_sequences_to_text(self):
+    vectors = self.vectorizer.texts_to_vectors(DOCS)
+    docs = self.vectorizer.vectors_to_texts(vectors)
+    expected_docs = []
+    for doc in DOCS:
+        _doc = []
+        sentences = self.sent_tokenize(doc)
+        for sentence in sentences:
+            _doc.append(self.vectorizer._apply_filters(sentence).split())
+        expected_docs.append(_doc)
+    self.assertListEqual(docs, expected_docs)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences"><code class="name flex">
+<span>def <span class="ident">test_texts_to_sequences</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_texts_to_sequences(self):
+    vectors = self.vectorizer.texts_to_vectors(DOCS)
+    docs_stats, sents_stats, words_stats = self.vectorizer.stats()
+    shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
+    self.assertEqual(vectors.shape, shape)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues"><code class="flex name class">
+<span>class <span class="ident">TestSentWordVectorizerWithLargeValues</span></span>
+<span>(</span><span>methodName='runTest')</span>
+</code></dt>
+<dd>
+<section class="desc"><p>A class whose instances are single test cases.</p>
+<p>By default, the test code itself should be placed in a method named
+'runTest'.</p>
+<p>If the fixture may be used for many test cases, create as
+many test methods as are needed. When instantiating such a TestCase
+subclass, specify in the constructor arguments the name of the test method
+that the instance is to execute.</p>
+<p>Test authors should subclass TestCase for their own tests. Construction
+and deconstruction of the test's environment ('fixture') can be
+implemented by overriding the 'setUp' and 'tearDown' methods respectively.</p>
+<p>If it is necessary to override the <strong>init</strong> method, the base class
+<strong>init</strong> method must always be called. It is important that subclasses
+should not change the signature of their <strong>init</strong> method, since instances
+of the classes are instantiated automatically by parts of the framework
+in order to be run.</p>
+<p>When subclassing TestCase, you can set these attributes:
+<em> failureException: determines which exception will be raised when
+the instance's assertion methods fail; test methods raising this
+exception will be deemed to have 'failed' rather than 'errored'.
+</em> longMessage: determines whether long messages (including repr of
+objects used in assert methods) will be printed on failure in <em>addition</em>
+to any explicit message passed.
+* maxDiff: sets the maximum length of a diff in failure messages
+by assert methods using difflib. It is looked up as an instance
+attribute so can be configured by individual tests if required.</p>
+<p>Create an instance of the class that will use the named test
+method when executed. Raises a ValueError if the instance does
+not have a method with the specified name.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TestSentWordVectorizerWithLargeValues(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.sent_tokenize = sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def expected_vector(self, doc):
+        # Length of sentences of DOC0.
+        sents = self.sent_tokenize(doc)
+        sent_len = len(sents)
+        # LARGE_MAX_SENTENCES must be at least by 1 larger from the total
+        # sentences of the document, to test padding.
+        num_zero_sentences = LARGE_MAX_SENTENCES - sent_len
+        if num_zero_sentences &lt; 1:
+            self.fail(&#39;Unable to test padding. &#39;
+                      &#39;Total number of sentences in `vectors` is equal or &#39;
+                      &#39;less than `LARGE_MAX_SENTENCES`. &#39;
+                      &#39;Increase `LARGE_MAX_SENTENCES`.&#39;)
+        # Expected padded vector with padding `pre` should have the shape
+        # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
+        expected_padded_vector = np.full(
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+        return expected_padded_vector
+
+    def test_text_to_sequences_padding_pre(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            padding=&#39;pre&#39;)
+        expected_padded_vector = self.expected_vector(DOC0)
+        test_vector = vectors[0][0]  # Doc 0, sentence 0
+        equiv = np.array_equiv(test_vector, expected_padded_vector)
+        self.assertTrue(equiv)
+
+    def test_text_to_sequences_padding_post(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+            padding=&#39;post&#39;)
+        expected_padded_vector = self.expected_vector(DOC0)
+        test_vector = vectors[0][-1]  # Doc 0, last sentence
+        equiv = np.array_equiv(test_vector, expected_padded_vector)
+        self.assertTrue(equiv)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>unittest.case.TestCase</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.expected_vector"><code class="name flex">
+<span>def <span class="ident">expected_vector</span></span>(<span>self, doc)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def expected_vector(self, doc):
+    # Length of sentences of DOC0.
+    sents = self.sent_tokenize(doc)
+    sent_len = len(sents)
+    # LARGE_MAX_SENTENCES must be at least by 1 larger from the total
+    # sentences of the document, to test padding.
+    num_zero_sentences = LARGE_MAX_SENTENCES - sent_len
+    if num_zero_sentences &lt; 1:
+        self.fail(&#39;Unable to test padding. &#39;
+                  &#39;Total number of sentences in `vectors` is equal or &#39;
+                  &#39;less than `LARGE_MAX_SENTENCES`. &#39;
+                  &#39;Increase `LARGE_MAX_SENTENCES`.&#39;)
+    # Expected padded vector with padding `pre` should have the shape
+    # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
+    expected_padded_vector = np.full(
+        shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+        fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+    return expected_padded_vector</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.setUp"><code class="name flex">
+<span>def <span class="ident">setUp</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Hook method for setting up the test fixture before exercising it.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def setUp(self) -&gt; None:
+    from nltk import sent_tokenize
+    self.sent_tokenize = sent_tokenize
+    self.vectorizer = SentWordVectorizer(sent_tokenize)
+    self.vectorizer.fit_on_texts(DOCS)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post"><code class="name flex">
+<span>def <span class="ident">test_text_to_sequences_padding_post</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_text_to_sequences_padding_post(self):
+    vectors = self.vectorizer.texts_to_vectors(
+        DOCS,
+        shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+        padding=&#39;post&#39;)
+    expected_padded_vector = self.expected_vector(DOC0)
+    test_vector = vectors[0][-1]  # Doc 0, last sentence
+    equiv = np.array_equiv(test_vector, expected_padded_vector)
+    self.assertTrue(equiv)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre"><code class="name flex">
+<span>def <span class="ident">test_text_to_sequences_padding_pre</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_text_to_sequences_padding_pre(self):
+    vectors = self.vectorizer.texts_to_vectors(
+        DOCS,
+        shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
+        padding=&#39;pre&#39;)
+    expected_padded_vector = self.expected_vector(DOC0)
+    test_vector = vectors[0][0]  # Doc 0, sentence 0
+    equiv = np.array_equiv(test_vector, expected_padded_vector)
+    self.assertTrue(equiv)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues"><code class="flex name class">
+<span>class <span class="ident">TestSentWordVectorizerWithSmallValues</span></span>
+<span>(</span><span>methodName='runTest')</span>
+</code></dt>
+<dd>
+<section class="desc"><p>A class whose instances are single test cases.</p>
+<p>By default, the test code itself should be placed in a method named
+'runTest'.</p>
+<p>If the fixture may be used for many test cases, create as
+many test methods as are needed. When instantiating such a TestCase
+subclass, specify in the constructor arguments the name of the test method
+that the instance is to execute.</p>
+<p>Test authors should subclass TestCase for their own tests. Construction
+and deconstruction of the test's environment ('fixture') can be
+implemented by overriding the 'setUp' and 'tearDown' methods respectively.</p>
+<p>If it is necessary to override the <strong>init</strong> method, the base class
+<strong>init</strong> method must always be called. It is important that subclasses
+should not change the signature of their <strong>init</strong> method, since instances
+of the classes are instantiated automatically by parts of the framework
+in order to be run.</p>
+<p>When subclassing TestCase, you can set these attributes:
+<em> failureException: determines which exception will be raised when
+the instance's assertion methods fail; test methods raising this
+exception will be deemed to have 'failed' rather than 'errored'.
+</em> longMessage: determines whether long messages (including repr of
+objects used in assert methods) will be printed on failure in <em>addition</em>
+to any explicit message passed.
+* maxDiff: sets the maximum length of a diff in failure messages
+by assert methods using difflib. It is looked up as an instance
+attribute so can be configured by individual tests if required.</p>
+<p>Create an instance of the class that will use the named test
+method when executed. Raises a ValueError if the instance does
+not have a method with the specified name.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TestSentWordVectorizerWithSmallValues(TestCase):
+    def setUp(self) -&gt; None:
+        from nltk import sent_tokenize
+        self.vectorizer = SentWordVectorizer(sent_tokenize)
+        self.vectorizer.fit_on_texts(DOCS)
+
+    def test_sequences_to_text_truncating_post(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+            padding=&#39;pre&#39;,
+            truncating=&#39;post&#39;)
+        result = self.vectorizer.vectors_to_texts(vectors)
+        expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
+        self.assertListEqual(result, expected)
+
+    def test_sequences_to_text_truncating_pre(self):
+        vectors = self.vectorizer.texts_to_vectors(
+            DOCS,
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+            padding=&#39;pre&#39;,
+            truncating=&#39;pre&#39;)
+        result = self.vectorizer.vectors_to_texts(vectors)
+        expected = [DOC0_SW_TPRE, DOC1_SW_TPRE]
+        self.assertListEqual(result, expected)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>unittest.case.TestCase</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.setUp"><code class="name flex">
+<span>def <span class="ident">setUp</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Hook method for setting up the test fixture before exercising it.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def setUp(self) -&gt; None:
+    from nltk import sent_tokenize
+    self.vectorizer = SentWordVectorizer(sent_tokenize)
+    self.vectorizer.fit_on_texts(DOCS)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post"><code class="name flex">
+<span>def <span class="ident">test_sequences_to_text_truncating_post</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_sequences_to_text_truncating_post(self):
+    vectors = self.vectorizer.texts_to_vectors(
+        DOCS,
+        shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+        padding=&#39;pre&#39;,
+        truncating=&#39;post&#39;)
+    result = self.vectorizer.vectors_to_texts(vectors)
+    expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
+    self.assertListEqual(result, expected)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre"><code class="name flex">
+<span>def <span class="ident">test_sequences_to_text_truncating_pre</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_sequences_to_text_truncating_pre(self):
+    vectors = self.vectorizer.texts_to_vectors(
+        DOCS,
+        shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
+        padding=&#39;pre&#39;,
+        truncating=&#39;pre&#39;)
+    result = self.vectorizer.vectors_to_texts(vectors)
+    expected = [DOC0_SW_TPRE, DOC1_SW_TPRE]
+    self.assertListEqual(result, expected)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="keras_nlp.test.unit.preprocessing" href="index.html">keras_nlp.test.unit.preprocessing</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer">TestSentWordVectorizer</a></code></h4>
+<ul class="">
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text">test_sequences_to_text</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences">test_texts_to_sequences</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues">TestSentWordVectorizerWithLargeValues</a></code></h4>
+<ul class="">
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.expected_vector" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.expected_vector">expected_vector</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post">test_text_to_sequences_padding_post</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre">test_text_to_sequences_padding_pre</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues">TestSentWordVectorizerWithSmallValues</a></code></h4>
+<ul class="">
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post">test_sequences_to_text_truncating_post</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre">test_sequences_to_text_truncating_pre</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.2</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>
