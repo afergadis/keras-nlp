@@ -44,13 +44,13 @@ class TestSentWordVectorizer(TestCase):
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_texts_to_sequences(self):
+    def test_texts_to_vectors(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs_stats, sents_stats, words_stats = self.vectorizer.stats()
         shape = (len(DOCS), docs_stats['max'], sents_stats['max'])
         self.assertEqual(vectors.shape, shape)
 
-    def test_sequences_to_text(self):
+    def test_vectors_to_text(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs = self.vectorizer.vectors_to_texts(vectors)
         expected_docs = []
@@ -69,7 +69,7 @@ class TestSentWordVectorizerWithSmallValues(TestCase):
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_sequences_to_text_truncating_post(self):
+    def test_vectors_to_text_truncating_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -79,7 +79,7 @@ class TestSentWordVectorizerWithSmallValues(TestCase):
         expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
         self.assertListEqual(result, expected)
 
-    def test_sequences_to_text_truncating_pre(self):
+    def test_vectors_to_text_truncating_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -113,10 +113,10 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
         # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
         expected_padded_vector = np.full(
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-            fill_value=self.vectorizer.token2id['PAD'])
+            fill_value=self.vectorizer.token2id['_PAD_'])
         return expected_padded_vector
 
-    def test_text_to_sequences_padding_pre(self):
+    def test_text_to_vectors_padding_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -126,7 +126,7 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
         equiv = np.array_equiv(test_vector, expected_padded_vector)
         self.assertTrue(equiv)
 
-    def test_text_to_sequences_padding_post(self):
+    def test_text_to_vectors_padding_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),

@@ -1,4 +1,5 @@
 import numpy as np
+from keras_nlp.preprocessing import sent_tokenize
 from unittest import TestCase
 from keras_nlp.preprocessing.text import SentCharVectorizer
 
@@ -38,7 +39,6 @@ LARGE_MAX_SENTENCES, LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS = 4, 90, 10
 
 class TestSentenceCharVectorizerWithDefaultValues(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
         self.sent_tokenize = sent_tokenize
         self.vectorizer = SentCharVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
@@ -46,7 +46,7 @@ class TestSentenceCharVectorizerWithDefaultValues(TestCase):
     def test_fit_on_texts(self):
         self.assertEqual(len(self.vectorizer.token2id), 36)
 
-    def test_texts_to_sequences(self):
+    def test_texts_to_vectors(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs_stats, sents_stats, words_stats = self.vectorizer.stats()
         shape = (len(DOCS), docs_stats['max'], sents_stats['max'],
@@ -71,15 +71,13 @@ class TestSentenceCharVectorizerWithDefaultValues(TestCase):
 
 class TestSentenceCharVectorizerWithSmallValues(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
         self.vectorizer = SentCharVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
     def test_vectors_to_text_truncating_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
-            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS,
-                   SMALL_MAX_CHARACTERS),
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS, SMALL_MAX_CHARACTERS),
             padding='pre',
             truncating='post')
         result = self.vectorizer.vectors_to_texts(vectors)
@@ -89,8 +87,7 @@ class TestSentenceCharVectorizerWithSmallValues(TestCase):
     def test_vectors_to_text_truncating_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
-            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS,
-                   SMALL_MAX_CHARACTERS),
+            shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS, SMALL_MAX_CHARACTERS),
             padding='pre',
             truncating='pre')
         result = self.vectorizer.vectors_to_texts(vectors)
@@ -100,7 +97,6 @@ class TestSentenceCharVectorizerWithSmallValues(TestCase):
 
 class TestSentenceCharVectorizerWithLargeValues(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
         self.sent_tokenize = sent_tokenize
         self.vectorizer = SentCharVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
@@ -121,25 +117,23 @@ class TestSentenceCharVectorizerWithLargeValues(TestCase):
         # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
         expected_padded_vector = np.full(
             shape=(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS),
-            fill_value=self.vectorizer.token2id['PAD'])
+            fill_value=self.vectorizer.token2id['_PAD_'])
         return expected_padded_vector
 
-    def test_text_to_sequences_padding_pre(self):
+    def test_text_to_vectors_padding_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
-            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS,
-                   LARGE_MAX_CHARACTERS),
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS),
             padding='pre')
         expected_padded_vector = self.expected_vector(DOC0)
         test_vector = vectors[0][0]  # Doc 0, sentence 0
         equiv = np.array_equiv(test_vector, expected_padded_vector)
         self.assertTrue(equiv)
 
-    def test_text_to_sequences_padding_post(self):
+    def test_text_to_vectors_padding_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
-            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS,
-                   LARGE_MAX_CHARACTERS),
+            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS),
             padding='post')
         expected_padded_vector = self.expected_vector(DOC0)
         test_vector = vectors[0][-1]  # Doc 0, last sentence
@@ -149,17 +143,16 @@ class TestSentenceCharVectorizerWithLargeValues(TestCase):
 
 class TestSentenceCharVectorizerExceptions(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
         self.vectorizer = SentCharVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_text_to_sequences_truncating_exception(self):
+    def test_text_to_vectors_truncating_exception(self):
         self.assertRaises(
             ValueError, self.vectorizer.texts_to_vectors, DOCS,
             (SMALL_MAX_SENTENCES, SMALL_MAX_WORDS, SMALL_MAX_CHARACTERS),
             'pre', 'middle')
 
-    def test_text__to_sequences_padding_exception(self):
+    def test_text__to_vectors_padding_exception(self):
         self.assertRaises(
             ValueError, self.vectorizer.texts_to_vectors, DOCS,
             (SMALL_MAX_SENTENCES, SMALL_MAX_WORDS, SMALL_MAX_CHARACTERS),

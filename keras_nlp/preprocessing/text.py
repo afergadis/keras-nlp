@@ -354,23 +354,42 @@ class Vectorizer:
             of sentences. For each sentence a list of tokens where each token
             is a list of its characters.
         """
-        if self.id2token is None:
-            raise ValueError('Please use `fit_on_texts` method first.')
-        self.logger.info('Converting vectors to texts.')
-        texts = []
-        progbar = Progbar(
-            vectors.shape[0], interval=0.25, verbose=self.verbose)
-        for vector in vectors:
+
+        def decode_vector(vector):
             text = []
             for values in vector:
                 tokens = [
                     self.id2token[t] for t in values
                     if t != self.token2id['_PAD_']
                 ]
-                if len(tokens):
+                if len(tokens) > 0:
                     text.append(tokens)
-            texts.append(text)
-            progbar.update(len(texts))
+            return text
+
+        if self.id2token is None:
+            raise ValueError('Please use `fit_on_texts` method first.')
+        self.logger.info('Converting vectors to texts.')
+        texts = []
+        progbar = Progbar(
+            vectors.shape[0], interval=0.25, verbose=self.verbose)
+        if vectors.ndim == 2:
+            for doc in vectors:
+                # Just to be able to update progress bar.
+                text = decode_vector(doc.reshape(1, -1))
+                # text is a list with one item; the words of the document.
+                texts.append(text[0])
+                progbar.update(len(texts))
+        elif vectors.ndim == 3:
+            for vector in vectors:
+                texts.append(decode_vector(vector))
+                progbar.update(len(texts))
+        elif vectors.ndim == 4:
+            for doc in vectors:
+                text = []
+                for sents in doc:
+                    text.append(decode_vector(sents))
+                texts.append(text)
+                progbar.update(len(texts))
 
         return texts
 
@@ -397,6 +416,7 @@ class Vectorizer:
         # used in some methods. So we create a new one.
         self.__dict__ = state
         self.__dict__['logger'] = logging.getLogger(self.__class__.__name__)
+
 
 class CharVectorizer(Vectorizer):
     """
@@ -756,17 +776,6 @@ class WordVectorizer(Vectorizer):
             value=self.token2id['_PAD_'])
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        self.logger.info('Converting vectors to texts.')
-        progbar = Progbar(vectors.shape[0], interval=0.25, verbose=self.verbose)
-        texts = []
-        for vector in vectors:
-            words = [self.id2token[token] for token in vector if token != 0]
-            if len(words) > 0:
-                texts.append(words)
-            progbar.update(len(texts))
-        return texts
-
     def stats(self):
         return self.words_stats
 
@@ -990,13 +999,6 @@ class SentCharVectorizer(CharVectorizer):
                                     pad_value)
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-
-        return texts
-
     def stats(self):
         return self.sents_stats, self.words_stats, self.chars_stats
 
@@ -1037,6 +1039,7 @@ class SentWordVectorizer(WordVectorizer):
     >>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     ['in', 'vestibulum']
     """
+
     def __init__(self,
                  sent_tokenize=None,
                  word_tokenize=None,
@@ -1203,12 +1206,6 @@ class SentWordVectorizer(WordVectorizer):
             truncating=truncating,
             pad_value=self.token2id['_PAD_'])
         return vectors
-
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-        return texts
 
     def stats(self):
         return self.sents_stats, self.words_stats, self.chars_stats
