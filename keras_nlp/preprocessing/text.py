@@ -381,13 +381,17 @@ class Vectorizer:
                 progbar.update(len(texts))
         elif vectors.ndim == 3:
             for vector in vectors:
-                texts.append(decode_vector(vector))
+                decoded = decode_vector(vector)
+                if len(decoded) > 0:  # If len==0, it is padded.
+                    texts.append(decoded)
                 progbar.update(len(texts))
         elif vectors.ndim == 4:
             for doc in vectors:
                 text = []
                 for sents in doc:
-                    text.append(decode_vector(sents))
+                    decoded = decode_vector(sents)
+                    if len(decoded) > 0:  # If len==0, it is padded.
+                        text.append(decoded)
                 texts.append(text)
                 progbar.update(len(texts))
 
@@ -432,6 +436,7 @@ class CharVectorizer(Vectorizer):
     characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
     >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
     'In vestibulum erat nec nulla porttitor dignissim.']
+    >>> # In case `characters` are set, fit_on_texts it's secondary.
     >>> char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
     ...
     >>> docs = ['Nam accumsan velit vel ligula convallis cursus.', \
@@ -507,8 +512,10 @@ class CharVectorizer(Vectorizer):
             self.characters = None
         elif isinstance(characters, str):
             self.characters = [c for c in characters]
+            self.fit_on_texts([])
         else:
             self.characters = characters
+            self.fit_on_texts([])
 
         self.words_stats = None
         self.chars_stats = None
