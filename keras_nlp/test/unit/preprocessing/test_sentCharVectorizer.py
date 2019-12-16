@@ -55,7 +55,7 @@ class TestSentenceCharVectorizerWithDefaultValues(TestCase):
 
     def test_vectors_to_texts(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
-        docs = self.vectorizer.vectors_to_texts(vectors)
+        docs_chars = self.vectorizer.vectors_to_texts(vectors)
         doc_sents = [
             self.vectorizer._apply_filters(sent)
             for sent in self.sent_tokenize(DOC0)
@@ -66,7 +66,10 @@ class TestSentenceCharVectorizerWithDefaultValues(TestCase):
         words_chars = []
         for sent in sents_words:
             words_chars.append([[c for c in word] for word in sent])
-        self.assertListEqual(docs[0], words_chars)
+        self.assertListEqual(docs_chars[0], words_chars)
+
+        docs_words = self.vectorizer.vectors_to_texts(vectors, as_words=True)
+        self.assertListEqual(docs_words[0], sents_words)
 
 
 class TestSentenceCharVectorizerWithSmallValues(TestCase):

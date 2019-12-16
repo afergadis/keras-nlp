@@ -448,6 +448,9 @@ class CharVectorizer(Vectorizer):
     >>> decoded = char_vectorizer.vectors_to_texts(vectors)
     >>> print(decoded[0][:2])  # First 2 words of the 1st doc in docs.
     [['n', 'a', 'm'], ['a', 'c', 'c', 'u', 'm', 's', 'a', 'n']]
+    >>> decoded_words = char_vectorizer.vectors_to_texts(vectors, True)
+    >>> print(decoded_words[0][:2])  # First 2 words of the 1st doc in docs.
+    ['nam', 'accumsan']
     """
 
     def __init__(self,
@@ -620,6 +623,12 @@ class CharVectorizer(Vectorizer):
         vectors = self._pad_vectors(_texts, shape, padding, truncating,
                                     pad_value)
         return vectors
+
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[''.join(chars) for chars in words] for words in texts]
+        return texts
 
     def stats(self):
         return self.words_stats, self.chars_stats
@@ -821,6 +830,9 @@ class SentCharVectorizer(CharVectorizer):
     >>> decoded = sent_char_vectorizer.vectors_to_texts(vectors)
     >>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
+    >>> decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
+    >>> print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
+    ['in', 'vestibulum']
     """
 
     def __init__(self,
@@ -1005,6 +1017,13 @@ class SentCharVectorizer(CharVectorizer):
         vectors = self._pad_vectors(_texts, shape, padding, truncating,
                                     pad_value)
         return vectors
+
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[[''.join(chars) for chars in words] for words in sents]
+                     for sents in texts]
+        return texts
 
     def stats(self):
         return self.sents_stats, self.words_stats, self.chars_stats

@@ -48,10 +48,14 @@ class TestCharVectorizerWithDefaultValues(TestCase):
 
     def test_vectors_to_texts(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
-        docs = self.vectorizer.vectors_to_texts(vectors)
+        docs_chars = self.vectorizer.vectors_to_texts(vectors)
         text1 = self.vectorizer._apply_filters(DOC0)
-        doc1 = [[c for c in word] for word in text1.split()]
-        self.assertListEqual(docs[0], doc1)
+        doc1_chars = [[c for c in word] for word in text1.split()]
+        self.assertListEqual(docs_chars[0], doc1_chars)
+
+        docs_words = self.vectorizer.vectors_to_texts(vectors, as_words=True)
+        doc1_words = [word for word in text1.split()]
+        self.assertListEqual(docs_words[0], doc1_words)
 
 
 class TestCharVectorizerWithSmallValues(TestCase):
