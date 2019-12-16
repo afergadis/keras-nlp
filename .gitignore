@@ -14,7 +14,7 @@ ipython_config.py
 #   git rm -r .ipynb_checkpoints/
 
 ### JetBrains template
-./idea
+.idea/*
 
 # CMake
 cmake-build-*/
