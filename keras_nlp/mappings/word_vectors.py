@@ -139,7 +139,7 @@ class WordVectors:
             input_dim=len(self.vocab),
             output_dim=vector_len,
             input_length=input_length,
-            weights=self.vectors,
+            weights=[self.vectors],
             **kwargs)
         return layer
 
