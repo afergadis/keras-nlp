@@ -70,13 +70,13 @@ class TestSentWordVectorizer(TestCase):
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_texts_to_sequences(self):
+    def test_texts_to_vectors(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs_stats, sents_stats, words_stats = self.vectorizer.stats()
         shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
         self.assertEqual(vectors.shape, shape)
 
-    def test_sequences_to_text(self):
+    def test_vectors_to_text(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs = self.vectorizer.vectors_to_texts(vectors)
         expected_docs = []
@@ -95,7 +95,7 @@ class TestSentWordVectorizerWithSmallValues(TestCase):
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_sequences_to_text_truncating_post(self):
+    def test_vectors_to_text_truncating_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -105,7 +105,7 @@ class TestSentWordVectorizerWithSmallValues(TestCase):
         expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
         self.assertListEqual(result, expected)
 
-    def test_sequences_to_text_truncating_pre(self):
+    def test_vectors_to_text_truncating_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -139,10 +139,10 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
         # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
         expected_padded_vector = np.full(
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-            fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+            fill_value=self.vectorizer.token2id[&#39;_PAD_&#39;])
         return expected_padded_vector
 
-    def test_text_to_sequences_padding_pre(self):
+    def test_text_to_vectors_padding_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -152,7 +152,7 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
         equiv = np.array_equiv(test_vector, expected_padded_vector)
         self.assertTrue(equiv)
 
-    def test_text_to_sequences_padding_post(self):
+    def test_text_to_vectors_padding_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -216,13 +216,13 @@ not have a method with the specified name.</p></section>
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_texts_to_sequences(self):
+    def test_texts_to_vectors(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs_stats, sents_stats, words_stats = self.vectorizer.stats()
         shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
         self.assertEqual(vectors.shape, shape)
 
-    def test_sequences_to_text(self):
+    def test_vectors_to_text(self):
         vectors = self.vectorizer.texts_to_vectors(DOCS)
         docs = self.vectorizer.vectors_to_texts(vectors)
         expected_docs = []
@@ -256,8 +256,8 @@ not have a method with the specified name.</p></section>
     self.vectorizer.fit_on_texts(DOCS)</code></pre>
 </details>
 </dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text"><code class="name flex">
-<span>def <span class="ident">test_sequences_to_text</span></span>(<span>self)</span>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_vectors"><code class="name flex">
+<span>def <span class="ident">test_texts_to_vectors</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -265,7 +265,23 @@ not have a method with the specified name.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_sequences_to_text(self):
+<pre><code class="python">def test_texts_to_vectors(self):
+    vectors = self.vectorizer.texts_to_vectors(DOCS)
+    docs_stats, sents_stats, words_stats = self.vectorizer.stats()
+    shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
+    self.assertEqual(vectors.shape, shape)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_vectors_to_text"><code class="name flex">
+<span>def <span class="ident">test_vectors_to_text</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_vectors_to_text(self):
     vectors = self.vectorizer.texts_to_vectors(DOCS)
     docs = self.vectorizer.vectors_to_texts(vectors)
     expected_docs = []
@@ -276,22 +292,6 @@ not have a method with the specified name.</p></section>
             _doc.append(self.vectorizer._apply_filters(sentence).split())
         expected_docs.append(_doc)
     self.assertListEqual(docs, expected_docs)</code></pre>
-</details>
-</dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences"><code class="name flex">
-<span>def <span class="ident">test_texts_to_sequences</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def test_texts_to_sequences(self):
-    vectors = self.vectorizer.texts_to_vectors(DOCS)
-    docs_stats, sents_stats, words_stats = self.vectorizer.stats()
-    shape = (len(DOCS), docs_stats[&#39;max&#39;], sents_stats[&#39;max&#39;])
-    self.assertEqual(vectors.shape, shape)</code></pre>
 </details>
 </dd>
 </dl>
@@ -356,10 +356,10 @@ not have a method with the specified name.</p></section>
         # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
         expected_padded_vector = np.full(
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-            fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+            fill_value=self.vectorizer.token2id[&#39;_PAD_&#39;])
         return expected_padded_vector
 
-    def test_text_to_sequences_padding_pre(self):
+    def test_text_to_vectors_padding_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -369,7 +369,7 @@ not have a method with the specified name.</p></section>
         equiv = np.array_equiv(test_vector, expected_padded_vector)
         self.assertTrue(equiv)
 
-    def test_text_to_sequences_padding_post(self):
+    def test_text_to_vectors_padding_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -410,7 +410,7 @@ not have a method with the specified name.</p></section>
     # `(LARGE_MAX_WORDS, LARGE_MAX_CHARACTERS)` filled with `pad_value`.
     expected_padded_vector = np.full(
         shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-        fill_value=self.vectorizer.token2id[&#39;PAD&#39;])
+        fill_value=self.vectorizer.token2id[&#39;_PAD_&#39;])
     return expected_padded_vector</code></pre>
 </details>
 </dd>
@@ -430,8 +430,8 @@ not have a method with the specified name.</p></section>
     self.vectorizer.fit_on_texts(DOCS)</code></pre>
 </details>
 </dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post"><code class="name flex">
-<span>def <span class="ident">test_text_to_sequences_padding_post</span></span>(<span>self)</span>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_post"><code class="name flex">
+<span>def <span class="ident">test_text_to_vectors_padding_post</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -439,7 +439,7 @@ not have a method with the specified name.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_text_to_sequences_padding_post(self):
+<pre><code class="python">def test_text_to_vectors_padding_post(self):
     vectors = self.vectorizer.texts_to_vectors(
         DOCS,
         shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -450,8 +450,8 @@ not have a method with the specified name.</p></section>
     self.assertTrue(equiv)</code></pre>
 </details>
 </dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre"><code class="name flex">
-<span>def <span class="ident">test_text_to_sequences_padding_pre</span></span>(<span>self)</span>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_pre"><code class="name flex">
+<span>def <span class="ident">test_text_to_vectors_padding_pre</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -459,7 +459,7 @@ not have a method with the specified name.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_text_to_sequences_padding_pre(self):
+<pre><code class="python">def test_text_to_vectors_padding_pre(self):
     vectors = self.vectorizer.texts_to_vectors(
         DOCS,
         shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
@@ -515,7 +515,7 @@ not have a method with the specified name.</p></section>
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
-    def test_sequences_to_text_truncating_post(self):
+    def test_vectors_to_text_truncating_post(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -525,7 +525,7 @@ not have a method with the specified name.</p></section>
         expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
         self.assertListEqual(result, expected)
 
-    def test_sequences_to_text_truncating_pre(self):
+    def test_vectors_to_text_truncating_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
             DOCS,
             shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -556,8 +556,8 @@ not have a method with the specified name.</p></section>
     self.vectorizer.fit_on_texts(DOCS)</code></pre>
 </details>
 </dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post"><code class="name flex">
-<span>def <span class="ident">test_sequences_to_text_truncating_post</span></span>(<span>self)</span>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_post"><code class="name flex">
+<span>def <span class="ident">test_vectors_to_text_truncating_post</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -565,7 +565,7 @@ not have a method with the specified name.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_sequences_to_text_truncating_post(self):
+<pre><code class="python">def test_vectors_to_text_truncating_post(self):
     vectors = self.vectorizer.texts_to_vectors(
         DOCS,
         shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -576,8 +576,8 @@ not have a method with the specified name.</p></section>
     self.assertListEqual(result, expected)</code></pre>
 </details>
 </dd>
-<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre"><code class="name flex">
-<span>def <span class="ident">test_sequences_to_text_truncating_pre</span></span>(<span>self)</span>
+<dt id="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_pre"><code class="name flex">
+<span>def <span class="ident">test_vectors_to_text_truncating_pre</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -585,7 +585,7 @@ not have a method with the specified name.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def test_sequences_to_text_truncating_pre(self):
+<pre><code class="python">def test_vectors_to_text_truncating_pre(self):
     vectors = self.vectorizer.texts_to_vectors(
         DOCS,
         shape=(SMALL_MAX_SENTENCES, SMALL_MAX_WORDS),
@@ -618,8 +618,8 @@ not have a method with the specified name.</p></section>
 <h4><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer">TestSentWordVectorizer</a></code></h4>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.setUp">setUp</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_sequences_to_text">test_sequences_to_text</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_sequences">test_texts_to_sequences</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_vectors" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_texts_to_vectors">test_texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_vectors_to_text" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizer.test_vectors_to_text">test_vectors_to_text</a></code></li>
 </ul>
 </li>
 <li>
@@ -627,16 +627,16 @@ not have a method with the specified name.</p></section>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.expected_vector" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.expected_vector">expected_vector</a></code></li>
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.setUp">setUp</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_post">test_text_to_sequences_padding_post</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_sequences_padding_pre">test_text_to_sequences_padding_pre</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_post">test_text_to_vectors_padding_post</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithLargeValues.test_text_to_vectors_padding_pre">test_text_to_vectors_padding_pre</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues">TestSentWordVectorizerWithSmallValues</a></code></h4>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.setUp">setUp</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_post">test_sequences_to_text_truncating_post</a></code></li>
-<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_sequences_to_text_truncating_pre">test_sequences_to_text_truncating_pre</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_post" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_post">test_vectors_to_text_truncating_post</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_pre" href="#keras_nlp.test.unit.preprocessing.test_sentWordVectorizer.TestSentWordVectorizerWithSmallValues.test_vectors_to_text_truncating_pre">test_vectors_to_text_truncating_pre</a></code></li>
 </ul>
 </li>
 </ul>

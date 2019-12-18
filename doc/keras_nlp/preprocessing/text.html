@@ -380,23 +380,46 @@ class Vectorizer:
             of sentences. For each sentence a list of tokens where each token
             is a list of its characters.
         &#34;&#34;&#34;
-        if self.id2token is None:
-            raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
-        texts = []
-        progbar = Progbar(
-            vectors.shape[0], interval=0.25, verbose=self.verbose)
-        for vector in vectors:
+
+        def decode_vector(vector):
             text = []
             for values in vector:
                 tokens = [
                     self.id2token[t] for t in values
                     if t != self.token2id[&#39;_PAD_&#39;]
                 ]
-                if len(tokens):
+                if len(tokens) &gt; 0:
                     text.append(tokens)
-            texts.append(text)
-            progbar.update(len(texts))
+            return text
+
+        if self.id2token is None:
+            raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
+        self.logger.info(&#39;Converting vectors to texts.&#39;)
+        texts = []
+        progbar = Progbar(
+            vectors.shape[0], interval=0.25, verbose=self.verbose)
+        if vectors.ndim == 2:
+            for doc in vectors:
+                # Just to be able to update progress bar.
+                text = decode_vector(doc.reshape(1, -1))
+                # text is a list with one item; the words of the document.
+                texts.append(text[0])
+                progbar.update(len(texts))
+        elif vectors.ndim == 3:
+            for vector in vectors:
+                decoded = decode_vector(vector)
+                if len(decoded) &gt; 0:  # If len==0, it is padded.
+                    texts.append(decoded)
+                progbar.update(len(texts))
+        elif vectors.ndim == 4:
+            for doc in vectors:
+                text = []
+                for sents in doc:
+                    decoded = decode_vector(sents)
+                    if len(decoded) &gt; 0:  # If len==0, it is padded.
+                        text.append(decoded)
+                texts.append(text)
+                progbar.update(len(texts))
 
         return texts
 
@@ -424,6 +447,7 @@ class Vectorizer:
         self.__dict__ = state
         self.__dict__[&#39;logger&#39;] = logging.getLogger(self.__class__.__name__)
 
+
 class CharVectorizer(Vectorizer):
     &#34;&#34;&#34;
     Convert a list of texts to an array of vectors with shape `(num_of_texts,
@@ -438,6 +462,7 @@ class CharVectorizer(Vectorizer):
     characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
     &gt;&gt;&gt; texts = [&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;, \
     &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;]
+    &gt;&gt;&gt; # In case `characters` are set, fit_on_texts it&#39;s secondary.
     &gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
     ...
     &gt;&gt;&gt; docs = [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;, \
@@ -449,6 +474,9 @@ class CharVectorizer(Vectorizer):
     &gt;&gt;&gt; decoded = char_vectorizer.vectors_to_texts(vectors)
     &gt;&gt;&gt; print(decoded[0][:2])  # First 2 words of the 1st doc in docs.
     [[&#39;n&#39;, &#39;a&#39;, &#39;m&#39;], [&#39;a&#39;, &#39;c&#39;, &#39;c&#39;, &#39;u&#39;, &#39;m&#39;, &#39;s&#39;, &#39;a&#39;, &#39;n&#39;]]
+    &gt;&gt;&gt; decoded_words = char_vectorizer.vectors_to_texts(vectors, True)
+    &gt;&gt;&gt; print(decoded_words[0][:2])  # First 2 words of the 1st doc in docs.
+    [&#39;nam&#39;, &#39;accumsan&#39;]
     &#34;&#34;&#34;
 
     def __init__(self,
@@ -513,8 +541,10 @@ class CharVectorizer(Vectorizer):
             self.characters = None
         elif isinstance(characters, str):
             self.characters = [c for c in characters]
+            self.fit_on_texts([])
         else:
             self.characters = characters
+            self.fit_on_texts([])
 
         self.words_stats = None
         self.chars_stats = None
@@ -619,6 +649,12 @@ class CharVectorizer(Vectorizer):
         vectors = self._pad_vectors(_texts, shape, padding, truncating,
                                     pad_value)
         return vectors
+
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[&#39;&#39;.join(chars) for chars in words] for words in texts]
+        return texts
 
     def stats(self):
         return self.words_stats, self.chars_stats
@@ -782,17 +818,6 @@ class WordVectorizer(Vectorizer):
             value=self.token2id[&#39;_PAD_&#39;])
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
-        progbar = Progbar(vectors.shape[0], interval=0.25, verbose=self.verbose)
-        texts = []
-        for vector in vectors:
-            words = [self.id2token[token] for token in vector if token != 0]
-            if len(words) &gt; 0:
-                texts.append(words)
-            progbar.update(len(texts))
-        return texts
-
     def stats(self):
         return self.words_stats
 
@@ -831,6 +856,9 @@ class SentCharVectorizer(CharVectorizer):
     &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
     &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [[&#39;i&#39;, &#39;n&#39;], [&#39;v&#39;, &#39;e&#39;, &#39;s&#39;, &#39;t&#39;, &#39;i&#39;, &#39;b&#39;, &#39;u&#39;, &#39;l&#39;, &#39;u&#39;, &#39;m&#39;]]
+    &gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
+    &gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
+    [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
     def __init__(self,
@@ -1016,11 +1044,11 @@ class SentCharVectorizer(CharVectorizer):
                                     pad_value)
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[[&#39;&#39;.join(chars) for chars in words] for words in sents]
+                     for sents in texts]
         return texts
 
     def stats(self):
@@ -1063,6 +1091,7 @@ class SentWordVectorizer(WordVectorizer):
     &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
+
     def __init__(self,
                  sent_tokenize=None,
                  word_tokenize=None,
@@ -1230,12 +1259,6 @@ class SentWordVectorizer(WordVectorizer):
             pad_value=self.token2id[&#39;_PAD_&#39;])
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-        return texts
-
     def stats(self):
         return self.sents_stats, self.words_stats, self.chars_stats
 
@@ -1325,6 +1348,7 @@ represented with a list of <code>max_characters</code> ids.</p>
 <h2 id="examples">Examples</h2>
 <pre><code>&gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token='?',     characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
 &gt;&gt;&gt; texts = ['Phasellus fermentum tellus eget libero sodales varius.',     'In vestibulum erat nec nulla porttitor dignissim.']
+&gt;&gt;&gt; # In case `characters` are set, fit_on_texts it's secondary.
 &gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
 ...
 &gt;&gt;&gt; docs = ['Nam accumsan velit vel ligula convallis cursus.',     'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
@@ -1335,6 +1359,9 @@ represented with a list of <code>max_characters</code> ids.</p>
 &gt;&gt;&gt; decoded = char_vectorizer.vectors_to_texts(vectors)
 &gt;&gt;&gt; print(decoded[0][:2])  # First 2 words of the 1st doc in docs.
 [['n', 'a', 'm'], ['a', 'c', 'c', 'u', 'm', 's', 'a', 'n']]
+&gt;&gt;&gt; decoded_words = char_vectorizer.vectors_to_texts(vectors, True)
+&gt;&gt;&gt; print(decoded_words[0][:2])  # First 2 words of the 1st doc in docs.
+['nam', 'accumsan']
 </code></pre>
 <h2 id="parameters">Parameters</h2>
 <dl>
@@ -1392,6 +1419,7 @@ represents an out of vocabulary token.</dd>
     characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
     &gt;&gt;&gt; texts = [&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;, \
     &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;]
+    &gt;&gt;&gt; # In case `characters` are set, fit_on_texts it&#39;s secondary.
     &gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
     ...
     &gt;&gt;&gt; docs = [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;, \
@@ -1403,6 +1431,9 @@ represents an out of vocabulary token.</dd>
     &gt;&gt;&gt; decoded = char_vectorizer.vectors_to_texts(vectors)
     &gt;&gt;&gt; print(decoded[0][:2])  # First 2 words of the 1st doc in docs.
     [[&#39;n&#39;, &#39;a&#39;, &#39;m&#39;], [&#39;a&#39;, &#39;c&#39;, &#39;c&#39;, &#39;u&#39;, &#39;m&#39;, &#39;s&#39;, &#39;a&#39;, &#39;n&#39;]]
+    &gt;&gt;&gt; decoded_words = char_vectorizer.vectors_to_texts(vectors, True)
+    &gt;&gt;&gt; print(decoded_words[0][:2])  # First 2 words of the 1st doc in docs.
+    [&#39;nam&#39;, &#39;accumsan&#39;]
     &#34;&#34;&#34;
 
     def __init__(self,
@@ -1467,8 +1498,10 @@ represents an out of vocabulary token.</dd>
             self.characters = None
         elif isinstance(characters, str):
             self.characters = [c for c in characters]
+            self.fit_on_texts([])
         else:
             self.characters = characters
+            self.fit_on_texts([])
 
         self.words_stats = None
         self.chars_stats = None
@@ -1574,6 +1607,12 @@ represents an out of vocabulary token.</dd>
                                     pad_value)
         return vectors
 
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[&#39;&#39;.join(chars) for chars in words] for words in texts]
+        return texts
+
     def stats(self):
         return self.words_stats, self.chars_stats
 
@@ -1629,6 +1668,9 @@ max_sentences, max_words, max_characters)</code>.</p>
 &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
 &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
 [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
+&gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
+&gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
+['in', 'vestibulum']
 </code></pre>
 <h2 id="parameters">Parameters</h2>
 <dl>
@@ -1704,6 +1746,9 @@ represents an out of vocabulary token.</dd>
     &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
     &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [[&#39;i&#39;, &#39;n&#39;], [&#39;v&#39;, &#39;e&#39;, &#39;s&#39;, &#39;t&#39;, &#39;i&#39;, &#39;b&#39;, &#39;u&#39;, &#39;l&#39;, &#39;u&#39;, &#39;m&#39;]]
+    &gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
+    &gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
+    [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
     def __init__(self,
@@ -1889,11 +1934,11 @@ represents an out of vocabulary token.</dd>
                                     pad_value)
         return vectors
 
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-
+    def vectors_to_texts(self, vectors, as_words=False):
+        texts = super().vectors_to_texts(vectors)
+        if as_words:
+            texts = [[[&#39;&#39;.join(chars) for chars in words] for words in sents]
+                     for sents in texts]
         return texts
 
     def stats(self):
@@ -2021,6 +2066,7 @@ represents an out of vocabulary token.</dd>
     &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
+
     def __init__(self,
                  sent_tokenize=None,
                  word_tokenize=None,
@@ -2187,12 +2233,6 @@ represents an out of vocabulary token.</dd>
             truncating=truncating,
             pad_value=self.token2id[&#39;_PAD_&#39;])
         return vectors
-
-    def vectors_to_texts(self, vectors):
-        texts = []
-        for vector in vectors:
-            texts.append(super().vectors_to_texts(vector))
-        return texts
 
     def stats(self):
         return self.sents_stats, self.words_stats, self.chars_stats
@@ -2565,23 +2605,46 @@ represents an out of vocabulary token.</dd>
             of sentences. For each sentence a list of tokens where each token
             is a list of its characters.
         &#34;&#34;&#34;
-        if self.id2token is None:
-            raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
-        texts = []
-        progbar = Progbar(
-            vectors.shape[0], interval=0.25, verbose=self.verbose)
-        for vector in vectors:
+
+        def decode_vector(vector):
             text = []
             for values in vector:
                 tokens = [
                     self.id2token[t] for t in values
                     if t != self.token2id[&#39;_PAD_&#39;]
                 ]
-                if len(tokens):
+                if len(tokens) &gt; 0:
                     text.append(tokens)
-            texts.append(text)
-            progbar.update(len(texts))
+            return text
+
+        if self.id2token is None:
+            raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
+        self.logger.info(&#39;Converting vectors to texts.&#39;)
+        texts = []
+        progbar = Progbar(
+            vectors.shape[0], interval=0.25, verbose=self.verbose)
+        if vectors.ndim == 2:
+            for doc in vectors:
+                # Just to be able to update progress bar.
+                text = decode_vector(doc.reshape(1, -1))
+                # text is a list with one item; the words of the document.
+                texts.append(text[0])
+                progbar.update(len(texts))
+        elif vectors.ndim == 3:
+            for vector in vectors:
+                decoded = decode_vector(vector)
+                if len(decoded) &gt; 0:  # If len==0, it is padded.
+                    texts.append(decoded)
+                progbar.update(len(texts))
+        elif vectors.ndim == 4:
+            for doc in vectors:
+                text = []
+                for sents in doc:
+                    decoded = decode_vector(sents)
+                    if len(decoded) &gt; 0:  # If len==0, it is padded.
+                        text.append(decoded)
+                texts.append(text)
+                progbar.update(len(texts))
 
         return texts
 
@@ -2846,23 +2909,46 @@ is a list of its characters.</dd>
         of sentences. For each sentence a list of tokens where each token
         is a list of its characters.
     &#34;&#34;&#34;
-    if self.id2token is None:
-        raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-    self.logger.info(&#39;Converting vectors to texts.&#39;)
-    texts = []
-    progbar = Progbar(
-        vectors.shape[0], interval=0.25, verbose=self.verbose)
-    for vector in vectors:
+
+    def decode_vector(vector):
         text = []
         for values in vector:
             tokens = [
                 self.id2token[t] for t in values
                 if t != self.token2id[&#39;_PAD_&#39;]
             ]
-            if len(tokens):
+            if len(tokens) &gt; 0:
                 text.append(tokens)
-        texts.append(text)
-        progbar.update(len(texts))
+        return text
+
+    if self.id2token is None:
+        raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
+    self.logger.info(&#39;Converting vectors to texts.&#39;)
+    texts = []
+    progbar = Progbar(
+        vectors.shape[0], interval=0.25, verbose=self.verbose)
+    if vectors.ndim == 2:
+        for doc in vectors:
+            # Just to be able to update progress bar.
+            text = decode_vector(doc.reshape(1, -1))
+            # text is a list with one item; the words of the document.
+            texts.append(text[0])
+            progbar.update(len(texts))
+    elif vectors.ndim == 3:
+        for vector in vectors:
+            decoded = decode_vector(vector)
+            if len(decoded) &gt; 0:  # If len==0, it is padded.
+                texts.append(decoded)
+            progbar.update(len(texts))
+    elif vectors.ndim == 4:
+        for doc in vectors:
+            text = []
+            for sents in doc:
+                decoded = decode_vector(sents)
+                if len(decoded) &gt; 0:  # If len==0, it is padded.
+                    text.append(decoded)
+            texts.append(text)
+            progbar.update(len(texts))
 
     return texts</code></pre>
 </details>
@@ -3071,17 +3157,6 @@ represents an out of vocabulary token.</dd>
             truncating=truncating,
             value=self.token2id[&#39;_PAD_&#39;])
         return vectors
-
-    def vectors_to_texts(self, vectors):
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
-        progbar = Progbar(vectors.shape[0], interval=0.25, verbose=self.verbose)
-        texts = []
-        for vector in vectors:
-            words = [self.id2token[token] for token in vector if token != 0]
-            if len(words) &gt; 0:
-                texts.append(words)
-            progbar.update(len(texts))
-        return texts
 
     def stats(self):
         return self.words_stats
