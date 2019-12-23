@@ -1,5 +1,8 @@
 import tempfile
 from unittest import TestCase
+
+import numpy
+
 from keras_nlp import Glove, WordVectorizer, W2V
 
 
@@ -15,6 +18,20 @@ class TestGlove(TestCase):
         ]
         self.word_vectorizer = WordVectorizer(oov_token='_UNK_', verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
+
+    def test_vectors(self):
+        glove = Glove(self.word_vectorizer.token2id,
+                      self.word_vectorizer.oov_token)
+        glove.load(self.vectors_file.name)
+        arr1 = glove['phasellus']
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
 
     def test_glove_get_embedding_layer(self):
         glove = Glove(self.word_vectorizer.token2id,
@@ -38,6 +55,20 @@ class TestW2V(TestCase):
         ]
         self.word_vectorizer = WordVectorizer(oov_token='_UNK_', verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
+
+    def test_vectors(self):
+        w2v = W2V(self.word_vectorizer.token2id,
+                  self.word_vectorizer.oov_token)
+        w2v.load(self.vectors_file.name)
+        arr1 = w2v['phasellus']
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
 
     def test_w2v_get_embedding_layer(self):
         w2v = W2V(self.word_vectorizer.token2id,

@@ -8,8 +8,8 @@ the Keras tools we can do:
 ```pydocstring
 >>> from keras.preprocessing.text import Tokenizer
 >>> from keras_preprocessing.sequence import pad_sequences
->>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor.']
+>>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor.']
 >>> tokenizer = Tokenizer()
 >>> tokenizer.fit_on_texts(texts)
 >>> sequences = tokenizer.texts_to_sequences(texts)
@@ -23,8 +23,8 @@ In case we want the characters we have to do:
 ```pydocstring
 >>> from keras.preprocessing.text import Tokenizer
 >>> from keras_preprocessing.sequence import pad_sequences
->>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor.']
+>>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor.']
 >>> tokenizer = Tokenizer(char_level=True)
 >>> tokenizer.fit_on_texts(texts)
 >>> sequences = tokenizer.texts_to_sequences(texts)
@@ -64,19 +64,19 @@ given or inferred from the texts.
 ```pydocstring
 >>> from keras_nlp import WordVectorizer
 >>> word_vectorizer = WordVectorizer(verbose=0)
->>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor.']
->>> word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
->>> vectors = word_vectorizer.texts_to_vectors(texts, shape=(8, ))  #doctest :+ELLIPSIS
-...
+>>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor.']
+>>> word_vectorizer.fit_on_texts(texts)
+>>> vectors = word_vectorizer.texts_to_vectors(texts, shape=(8, ))
 >>> print(vectors.shape)  # (len(texts), max_words)
 (2, 8)
 >>> print(vectors)
 [[ 0  1  2  3  4  5  6  7]
  [ 0  0  8  9 10 11 12 13]]
 >>> decoded = word_vectorizer.vectors_to_texts(vectors)
->>> print(decoded[0][:3])  # First 3 words of the 1st text in texts.
+
+Print the first three words of the first document.
+>>> print(decoded[0][:3])
 ['phasellus', 'fermentum', 'tellus']
 ```    
 
@@ -89,16 +89,14 @@ characters is substituted by its id.
    
 ```pydocstring
 >>> from keras_nlp import CharVectorizer
->>> char_vectorizer = CharVectorizer(oov_token='?', \
-characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
->>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor.']
->>> char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
->>> docs = ['Nam accumsan velit vel ligula convallis cursus.', \
-'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
->>> vectors = char_vectorizer.texts_to_vectors(docs, shape=(5, 8))  #doctest :+ELLIPSIS
-...
+>>> char_vectorizer = CharVectorizer(
+... oov_token='?', characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
+>>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor.']
+>>> char_vectorizer.fit_on_texts(texts)
+>>> docs = ['Nam accumsan velit vel ligula convallis cursus.',
+... 'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
+>>> vectors = char_vectorizer.texts_to_vectors(docs, shape=(5, 8))
 >>> print(vectors.shape)  # (len(texts), max_words, max_characters)
 (2, 5, 8)
 >>> print(vectors)
@@ -113,8 +111,10 @@ characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
   [20  6  4 21  6 21 22 19]
   [ 0  0  0  0  0  0 10  5]]]
 >>> decoded = char_vectorizer.vectors_to_texts(vectors)
->>> print(decoded[0][:2])  # First 2 words of the 1st doc in docs.
->>> # *Attention:* Words are truncated! 1st doc looses the first 2 words.
+
+Print the first two words of the first text.
+Attention: Words are truncated! 1st doc looses the first 2 words.
+>>> print(decoded[0][:2])
 [['v', 'e', 'l', 'i', 't'], ['v', 'e', 'l']]
 ```    
 
@@ -127,17 +127,15 @@ same number of words per sentence `max_words`.
 ```pydocstring
 >>> from keras_nlp import SentWordVectorizer
 >>> sent_word_vectorizer = SentWordVectorizer(verbose=0)
->>> # Two documents. The fists with two sentences and the second with one.
->>> # The 1st document is already tokenized on sentences. Alternately, you
->>> # may pass a sent_tokenizer callable.
->>> texts = [['Phasellus fermentum tellus sodales varius.', \
-'In vestibulum erat nec nulla porttitor dignissim.'], \
-['Nam accumsan velit vel ligula convallis.'] \
-]
->>> sent_word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
->>> vectors = sent_word_vectorizer.texts_to_vectors(texts) #doctest:+ELLIPSIS
-...
+
+Two documents. The fists with two sentences and the second with one.
+The 1st document is already tokenized on sentences. Alternately, you
+may pass a sent_tokenizer callable.
+>>> texts = [['Phasellus fermentum tellus sodales varius.',
+... 'In vestibulum erat nec nulla porttitor dignissim.'],
+... ['Nam accumsan velit vel ligula convallis.']]
+>>> sent_word_vectorizer.fit_on_texts(texts)
+>>> vectors = sent_word_vectorizer.texts_to_vectors(texts)
 >>> print(vectors.shape)  # (len(texts), max_sentences, max_words)
 (2, 2, 7)
 >>> print(vectors)
@@ -146,7 +144,9 @@ same number of words per sentence `max_words`.
  [[ 0  0  0  0  0  0  0]
   [ 0 13 14 15 16 17 18]]]
 >>> decoded = sent_word_vectorizer.vectors_to_texts(vectors)
->>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
+
+From the first text, secondd sentence print the first two words.
+>>> print(decoded[0][1][:2])
 ['in', 'vestibulum']
 ```
 
@@ -155,24 +155,20 @@ same number of words per sentence `max_words`.
 >>> from keras_nlp import SentWordVectorizer
 >>> from keras_nlp.preprocessing import sent_tokenize
 >>> sent_word_vectorizer = SentWordVectorizer(sent_tokenize, verbose=0)
->>> # Two documents. The fists with two sentences and the second with one.
->>> texts = ['Phasellus fermentum tellus sodales varius. ' \
-'In vestibulum erat nec nulla porttitor dignissim.', \
-'Nam accumsan velit vel ligula convallis.' \
-]
->>> sent_word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
->>> vectors = sent_word_vectorizer.texts_to_vectors(texts) #doctest:+ELLIPSIS
-...
->>> print(vectors.shape)  # (len(texts), max_sentences, max_words)
-(2, 2, 7)
+
+Two documents. The fists with two sentences and the second with one.
+>>> texts = ['Phasellus fermentum tellus sodales varius. '
+... 'In vestibulum erat nec nulla porttitor dignissim.',
+... 'Nam accumsan velit vel ligula convallis.']
 >> print(vectors)
 [[[ 0  0  1  2  3  4  5]
   [ 6  7  8  9 10 11 12]]
  [[ 0  0  0  0  0  0  0]
   [ 0 13 14 15 16 17 18]]]
 >>> decoded = sent_word_vectorizer.vectors_to_texts(vectors)
->>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
+
+Print from the first text, second sentence the first two words.
+>>> print(decoded[0][1][:2])
 ['in', 'vestibulum']
 ```
 
@@ -186,17 +182,15 @@ number of characters.
 ```pydocstring
 >>> from keras_nlp import SentCharVectorizer
 >>> sent_char_vectorizer = SentCharVectorizer(verbose=0)
->>> # Two documents. The fists with two sentences and the second with one.
->>> # The 1st document is already tokenized on sentences. Alternately, you
->>> # may pass a sent_tokenizer callable.
->>> texts = [['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor dignissim.'], \
-['Nam accumsan velit vel ligula convallis cursus.'] \
-]
->>> sent_char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
->>> vectors = sent_char_vectorizer.texts_to_vectors(texts) #doctest:+ELLIPSIS
-...
+
+Two documents. The fists with two sentences and the second with one.
+The 1st document is already tokenized on sentences. Alternately, you
+may pass a sent_tokenizer callable.
+>>> texts = [['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor dignissim.'],
+... ['Nam accumsan velit vel ligula convallis cursus.']]
+>>> sent_char_vectorizer.fit_on_texts(texts)
+>>> vectors = sent_char_vectorizer.texts_to_vectors(texts)
 >>> print(vectors.shape)  # (len(texts), max_sentences, max_words, max_characters)
 (2, 2, 7, 10)
 >>> print(vectors[0])  # 2 sentences of the 1st text, 7 words/sent, 10 chars/word.
@@ -215,7 +209,9 @@ number of characters.
   [ 0 15 11  9  7  7  5  7 11  9]
   [ 0 17  5 14  8  5  2  2  5 10]]]
 >>> decoded = sent_char_vectorizer.vectors_to_texts(vectors)
->>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
+
+Print from the first text, second sentence the first two words.
+>>> print(decoded[0][1][:2])
 [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
 ```
 ## Mappings
@@ -230,16 +226,15 @@ vectors and return an embedding layer for a given vocabulary.
 >>> vectors_file.write(b'fermentum 0.2 0.1 -0.1\n')
 >>> vectors_file.seek(0)
 >>> word_vectorizer = WordVectorizer(oov_token='_UNK_', verbose=0)
->>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-'In vestibulum erat nec nulla porttitor.']
->>> word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-...
+>>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+... 'In vestibulum erat nec nulla porttitor.']
+>>> word_vectorizer.fit_on_texts(texts)
 >>> glove = Glove(word_vectorizer.token2id, word_vectorizer.oov_token)
->>> glove.load(vectors_file.name)  #doctest:+ELLIPSIS
-...
+>>> glove.load(vectors_file.name)  
 >>> embedding_layer = glove.get_embedding_layer(input_length=7)
 >>> assert embedding_layer.input_dim = word_vectorizer.num_tokens
 ```
+
 ## Documentation
 You can read about all methods and attributes of the classes in the `doc`
 directory.

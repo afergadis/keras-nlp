@@ -432,17 +432,16 @@ class CharVectorizer(Vectorizer):
 
     Examples
     --------
-    >>> char_vectorizer = CharVectorizer(oov_token='?', \
-    characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
-    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-    'In vestibulum erat nec nulla porttitor dignissim.']
-    >>> # In case `characters` are set, fit_on_texts it's secondary.
-    >>> char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-    ...
-    >>> docs = ['Nam accumsan velit vel ligula convallis cursus.', \
-    'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
-    >>> vectors = char_vectorizer.texts_to_vectors(docs)  #doctest:+ELLIPSIS
-    ...
+    >>> char_vectorizer = CharVectorizer(oov_token='?',
+    ... characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
+    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+    ... 'In vestibulum erat nec nulla porttitor dignissim.']
+
+    In case `characters` are set, fit_on_texts it's secondary.
+    >>> char_vectorizer.fit_on_texts(texts)
+    >>> docs = ['Nam accumsan velit vel ligula convallis cursus.',
+    ... 'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
+    >>> vectors = char_vectorizer.texts_to_vectors(docs)
     >>> print(vectors.shape)  # (len(texts), max_words, max_characters)
     (2, 9, 11)
     >>> decoded = char_vectorizer.vectors_to_texts(vectors)
@@ -652,16 +651,16 @@ class WordVectorizer(Vectorizer):
     Examples
     --------
     >>> word_vectorizer = WordVectorizer(verbose=0)
-    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-    'In vestibulum erat nec nulla porttitor dignissim.']
-    >>> word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-    ...
-    >>> vectors = word_vectorizer.texts_to_vectors(texts)  #doctest:+ELLIPSIS
-    ...
+    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+    ... 'In vestibulum erat nec nulla porttitor dignissim.']
+    >>> word_vectorizer.fit_on_texts(texts)
+    >>> vectors = word_vectorizer.texts_to_vectors(texts)
     >>> print(vectors.shape)  # (len(texts), max_words)
     (2, 7)
     >>> decoded = word_vectorizer.vectors_to_texts(vectors)
-    >>> print(decoded[0][:3])  # First 3 words of the 1st doc in docs.
+
+    First 3 words of the 1st doc in docs.
+    >>> print(decoded[0][:3])
     ['phasellus', 'fermentum', 'tellus']
     """
 
@@ -814,24 +813,27 @@ class SentCharVectorizer(CharVectorizer):
     Examples
     --------
     >>> sent_char_vectorizer = SentCharVectorizer(verbose=0)
-    >>> # Two documents. The fists with two sentences and the second with one.
-    >>> # The 1st document is already tokenized on sentences. Alternately, you
-    >>> # may pass a sent_tokenizer callable.
-    >>> texts = [['Phasellus fermentum tellus eget libero sodales varius.', \
-    'In vestibulum erat nec nulla porttitor dignissim.'], \
-    ['Nam accumsan velit vel ligula convallis cursus.'] \
-    ]
-    >>> sent_char_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-    ...
-    >>> vectors = sent_char_vectorizer.texts_to_vectors(texts) #doctest:+ELLIPSIS
-    ...
+
+    Two documents. The fists with two sentences and the second with one.
+    The 1st document is already tokenized on sentences. Alternately, you
+    may pass a sent_tokenizer callable.
+    >>> texts = [['Phasellus fermentum tellus eget libero sodales varius.',
+    ... 'In vestibulum erat nec nulla porttitor dignissim.'],
+    ... ['Nam accumsan velit vel ligula convallis cursus.']]
+    >>> sent_char_vectorizer.fit_on_texts(texts)
+    >>> vectors = sent_char_vectorizer.texts_to_vectors(texts)
     >>> print(vectors.shape)  # (len(texts), max_sentences, max_words, max_characters)
     (2, 2, 7, 10)
     >>> decoded = sent_char_vectorizer.vectors_to_texts(vectors)
-    >>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
+
+    Print from the first text, second sentence the first two words.
+    As list of characters:
+    >>> print(decoded[0][1][:2])
     [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
+
+    As list of words:
     >>> decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
-    >>> print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
+    >>> print(decoded_words[0][1][:2])
     ['in', 'vestibulum']
     """
 
@@ -1048,21 +1050,21 @@ class SentWordVectorizer(WordVectorizer):
     Examples
     --------
     >>> sent_word_vectorizer = SentWordVectorizer(verbose=0)
-    >>> # Two documents. The fists with two sentences and the second with one.
-    >>> # The 1st document is already tokenized on sentences. Alternately, you
-    >>> # may pass a sent_tokenizer callable.
-    >>> texts = [['Phasellus fermentum tellus sodales varius.', \
-    'In vestibulum erat nec nulla porttitor dignissim.'], \
-    ['Nam accumsan velit vel ligula convallis.'] \
-    ]
-    >>> sent_word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-    ...
-    >>> vectors = sent_word_vectorizer.texts_to_vectors(texts) #doctest:+ELLIPSIS
-    ...
+
+    Two documents. The fists with two sentences and the second with one.
+    The 1st document is already tokenized on sentences. Alternately, you
+    may pass a sent_tokenizer callable.
+    >>> texts = [['Phasellus fermentum tellus sodales varius.',
+    ... 'In vestibulum erat nec nulla porttitor dignissim.'],
+    ... ['Nam accumsan velit vel ligula convallis.'] ]
+    >>> sent_word_vectorizer.fit_on_texts(texts)
+    >>> vectors = sent_word_vectorizer.texts_to_vectors(texts)
     >>> print(vectors.shape)  # (len(texts), max_sentences, max_words)
     (2, 2, 7)
     >>> decoded = sent_word_vectorizer.vectors_to_texts(vectors)
-    >>> print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
+
+    Print from the fist text, second sentence, the first two words.
+    >>> print(decoded[0][1][:2])
     ['in', 'vestibulum']
     """
 

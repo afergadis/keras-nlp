@@ -26,6 +26,9 @@
 </summary>
 <pre><code class="python">import tempfile
 from unittest import TestCase
+
+import numpy
+
 from keras_nlp import Glove, WordVectorizer, W2V
 
 
@@ -41,6 +44,20 @@ class TestGlove(TestCase):
         ]
         self.word_vectorizer = WordVectorizer(oov_token=&#39;_UNK_&#39;, verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
+
+    def test_vectors(self):
+        glove = Glove(self.word_vectorizer.token2id,
+                      self.word_vectorizer.oov_token)
+        glove.load(self.vectors_file.name)
+        arr1 = glove[&#39;phasellus&#39;]
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
 
     def test_glove_get_embedding_layer(self):
         glove = Glove(self.word_vectorizer.token2id,
@@ -64,6 +81,20 @@ class TestW2V(TestCase):
         ]
         self.word_vectorizer = WordVectorizer(oov_token=&#39;_UNK_&#39;, verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
+
+    def test_vectors(self):
+        w2v = W2V(self.word_vectorizer.token2id,
+                  self.word_vectorizer.oov_token)
+        w2v.load(self.vectors_file.name)
+        arr1 = w2v[&#39;phasellus&#39;]
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
 
     def test_w2v_get_embedding_layer(self):
         w2v = W2V(self.word_vectorizer.token2id,
@@ -133,6 +164,20 @@ not have a method with the specified name.</p></section>
         self.word_vectorizer = WordVectorizer(oov_token=&#39;_UNK_&#39;, verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
 
+    def test_vectors(self):
+        glove = Glove(self.word_vectorizer.token2id,
+                      self.word_vectorizer.oov_token)
+        glove.load(self.vectors_file.name)
+        arr1 = glove[&#39;phasellus&#39;]
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
+
     def test_glove_get_embedding_layer(self):
         glove = Glove(self.word_vectorizer.token2id,
                       self.word_vectorizer.oov_token)
@@ -185,6 +230,30 @@ not have a method with the specified name.</p></section>
     embedding_layer = glove.get_embedding_layer(input_length=7)
     self.assertEqual(embedding_layer.input_dim,
                      self.word_vectorizer.num_tokens)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.test_vectors"><code class="name flex">
+<span>def <span class="ident">test_vectors</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_vectors(self):
+    glove = Glove(self.word_vectorizer.token2id,
+                  self.word_vectorizer.oov_token)
+    glove.load(self.vectors_file.name)
+    arr1 = glove[&#39;phasellus&#39;]
+    arr2 = numpy.asarray([0.1, -0.3, 0.2])
+    try:
+        numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+        res = True
+    except AssertionError as err:
+        res = False
+        print(err)
+    self.assertTrue(res)</code></pre>
 </details>
 </dd>
 </dl>
@@ -240,6 +309,20 @@ not have a method with the specified name.</p></section>
         self.word_vectorizer = WordVectorizer(oov_token=&#39;_UNK_&#39;, verbose=0)
         self.word_vectorizer.fit_on_texts(texts)
 
+    def test_vectors(self):
+        w2v = W2V(self.word_vectorizer.token2id,
+                  self.word_vectorizer.oov_token)
+        w2v.load(self.vectors_file.name)
+        arr1 = w2v[&#39;phasellus&#39;]
+        arr2 = numpy.asarray([0.1, -0.3, 0.2])
+        try:
+            numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+            res = True
+        except AssertionError as err:
+            res = False
+            print(err)
+        self.assertTrue(res)
+
     def test_w2v_get_embedding_layer(self):
         w2v = W2V(self.word_vectorizer.token2id,
                   self.word_vectorizer.oov_token)
@@ -275,6 +358,30 @@ not have a method with the specified name.</p></section>
     ]
     self.word_vectorizer = WordVectorizer(oov_token=&#39;_UNK_&#39;, verbose=0)
     self.word_vectorizer.fit_on_texts(texts)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_vectors"><code class="name flex">
+<span>def <span class="ident">test_vectors</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_vectors(self):
+    w2v = W2V(self.word_vectorizer.token2id,
+              self.word_vectorizer.oov_token)
+    w2v.load(self.vectors_file.name)
+    arr1 = w2v[&#39;phasellus&#39;]
+    arr2 = numpy.asarray([0.1, -0.3, 0.2])
+    try:
+        numpy.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+        res = True
+    except AssertionError as err:
+        res = False
+        print(err)
+    self.assertTrue(res)</code></pre>
 </details>
 </dd>
 <dt id="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_w2v_get_embedding_layer"><code class="name flex">
@@ -318,12 +425,14 @@ not have a method with the specified name.</p></section>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.setUp" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.setUp">setUp</a></code></li>
 <li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.test_glove_get_embedding_layer" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.test_glove_get_embedding_layer">test_glove_get_embedding_layer</a></code></li>
+<li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.test_vectors" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestGlove.test_vectors">test_vectors</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestW2V">TestW2V</a></code></h4>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.setUp" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_vectors" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_vectors">test_vectors</a></code></li>
 <li><code><a title="keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_w2v_get_embedding_layer" href="#keras_nlp.test.unit.mappings.test_word_vectors.TestW2V.test_w2v_get_embedding_layer">test_w2v_get_embedding_layer</a></code></li>
 </ul>
 </li>

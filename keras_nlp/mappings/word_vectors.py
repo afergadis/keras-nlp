@@ -15,18 +15,23 @@ class WordVectors:
     --------
     >>> import tempfile
     >>> from keras_nlp import Glove, WordVectorizer
-    >>> vectors_file = tempfile.NamedTemporaryFile(encoding='utf-8')
-    >>> vectors_file.write(b'phasellus 0.1 -0.3 0.2\\n')
-    >>> vectors_file.write(b'fermentum 0.2 0.1 -0.1\\n')
-    >>> vectors_file.seek(0)
+    >>> vectors_file = tempfile.NamedTemporaryFile()
+    >>> vectors_file.write(b'phasellus 0.1 -0.3 0.2\\n')  #doctest:+SKIP
+    >>> vectors_file.write(b'fermentum 0.2 0.1 -0.1\\n')  #doctest:+SKIP
+    >>> vectors_file.seek(0)  #doctest:+SKIP
+    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.',
+    ... 'In vestibulum erat nec nulla porttitor.']
     >>> word_vectorizer = WordVectorizer(oov_token='_UNK_', verbose=0)
-    >>> texts = ['Phasellus fermentum tellus eget libero sodales varius.', \
-    'In vestibulum erat nec nulla porttitor.']
-    >>> word_vectorizer.fit_on_texts(texts)  #doctest:+ELLIPSIS
-    ...
+    >>> word_vectorizer.fit_on_texts(texts)
     >>> glove = Glove(word_vectorizer.token2id, word_vectorizer.oov_token)
-    >>> glove.load(vectors_file.name)  #doctest:+ELLIPSIS
-    ...
+    >>> glove.load(vectors_file.name)
+
+    Validate the loaded vectors.
+    >>> arr1 = glove['phasellus']
+    >>> arr2 = np.asarray([0.1, -0.3, 0.2])
+    >>> np.testing.assert_array_almost_equal(arr1, arr2, decimal=1)
+
+    Embedding layer input dim should match vocabulary number of tokens.
     >>> embedding_layer = glove.get_embedding_layer(input_length=7)
     >>> assert embedding_layer.input_dim = word_vectorizer.num_tokens
     """
