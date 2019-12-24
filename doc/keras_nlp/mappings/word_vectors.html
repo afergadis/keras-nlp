@@ -124,7 +124,7 @@ class WordVectors:
         &#34;&#34;&#34;
         raise NotImplementedError
 
-    def get_embedding_layer(self, input_length, embedding_dim=None, **kwargs):
+    def get_embedding_layer(self, input_length, output_dim=None, **kwargs):
         &#34;&#34;&#34;
         Builds an Embedding layer.
 
@@ -138,7 +138,7 @@ class WordVectors:
             The value to set in the `input_length` parameter of the
             `Embedding` layer.
 
-        embedding_dim : int or None, default None
+        output_dim : int or None, default None
             In case of creating an Embedding layer with trainable weights
             (we haven&#39;t call the load method), this parameters should be set
             to the desired embedding dimensions. If there are loaded vectors,
@@ -151,27 +151,21 @@ class WordVectors:
         -------
         Embedding
             A Keras `Embedding` layer.
-
-        Raises
-        ------
-        ValueError
-            In case we haven&#39;t load word vectors and `embedding_dim` is None.
         &#34;&#34;&#34;
         if self.vector_len == 0:
-            if embedding_dim is None:
-                raise ValueError(
-                    &#39;You have to give a value to the `embedding_dim` parameter&#39;
-                )
-            vector_len = embedding_dim
-            kwargs[&#39;trainable&#39;] = True
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=output_dim,
+                input_length=input_length,
+                trainable=True,
+                **kwargs)
         else:
-            vector_len = self.vector_len
-        layer = Embedding(
-            input_dim=len(self.vocab),
-            output_dim=vector_len,
-            input_length=input_length,
-            weights=[self.vectors],
-            **kwargs)
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=self.vector_len,
+                input_length=input_length,
+                weights=[self.vectors],
+                **kwargs)
         return layer
 
     def __getitem__(self, item):
@@ -810,7 +804,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
         &#34;&#34;&#34;
         raise NotImplementedError
 
-    def get_embedding_layer(self, input_length, embedding_dim=None, **kwargs):
+    def get_embedding_layer(self, input_length, output_dim=None, **kwargs):
         &#34;&#34;&#34;
         Builds an Embedding layer.
 
@@ -824,7 +818,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
             The value to set in the `input_length` parameter of the
             `Embedding` layer.
 
-        embedding_dim : int or None, default None
+        output_dim : int or None, default None
             In case of creating an Embedding layer with trainable weights
             (we haven&#39;t call the load method), this parameters should be set
             to the desired embedding dimensions. If there are loaded vectors,
@@ -837,27 +831,21 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
         -------
         Embedding
             A Keras `Embedding` layer.
-
-        Raises
-        ------
-        ValueError
-            In case we haven&#39;t load word vectors and `embedding_dim` is None.
         &#34;&#34;&#34;
         if self.vector_len == 0:
-            if embedding_dim is None:
-                raise ValueError(
-                    &#39;You have to give a value to the `embedding_dim` parameter&#39;
-                )
-            vector_len = embedding_dim
-            kwargs[&#39;trainable&#39;] = True
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=output_dim,
+                input_length=input_length,
+                trainable=True,
+                **kwargs)
         else:
-            vector_len = self.vector_len
-        layer = Embedding(
-            input_dim=len(self.vocab),
-            output_dim=vector_len,
-            input_length=input_length,
-            weights=[self.vectors],
-            **kwargs)
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=self.vector_len,
+                input_length=input_length,
+                weights=[self.vectors],
+                **kwargs)
         return layer
 
     def __getitem__(self, item):
@@ -885,7 +873,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
 <h3>Methods</h3>
 <dl>
 <dt id="keras_nlp.mappings.word_vectors.WordVectors.get_embedding_layer"><code class="name flex">
-<span>def <span class="ident">get_embedding_layer</span></span>(<span>self, input_length, embedding_dim=None, **kwargs)</span>
+<span>def <span class="ident">get_embedding_layer</span></span>(<span>self, input_length, output_dim=None, **kwargs)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Builds an Embedding layer.</p>
@@ -897,7 +885,7 @@ vectors and the <code>trainable</code> parameter will be set to True.</p>
 <dt><strong><code>input_length</code></strong> :&ensp;<code>int</code></dt>
 <dd>The value to set in the <code>input_length</code> parameter of the
 <code>Embedding</code> layer.</dd>
-<dt><strong><code>embedding_dim</code></strong> :&ensp;<code>int</code> or <code>None</code>, default <code>None</code></dt>
+<dt><strong><code>output_dim</code></strong> :&ensp;<code>int</code> or <code>None</code>, default <code>None</code></dt>
 <dd>In case of creating an Embedding layer with trainable weights
 (we haven't call the load method), this parameters should be set
 to the desired embedding dimensions. If there are loaded vectors,
@@ -909,17 +897,12 @@ this parameters is ignored.</dd>
 <dl>
 <dt><code>Embedding</code></dt>
 <dd>A Keras <code>Embedding</code> layer.</dd>
-</dl>
-<h2 id="raises">Raises</h2>
-<dl>
-<dt><code>ValueError</code></dt>
-<dd>In case we haven't load word vectors and <code>embedding_dim</code> is None.</dd>
 </dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_embedding_layer(self, input_length, embedding_dim=None, **kwargs):
+<pre><code class="python">def get_embedding_layer(self, input_length, output_dim=None, **kwargs):
     &#34;&#34;&#34;
     Builds an Embedding layer.
 
@@ -933,7 +916,7 @@ this parameters is ignored.</dd>
         The value to set in the `input_length` parameter of the
         `Embedding` layer.
 
-    embedding_dim : int or None, default None
+    output_dim : int or None, default None
         In case of creating an Embedding layer with trainable weights
         (we haven&#39;t call the load method), this parameters should be set
         to the desired embedding dimensions. If there are loaded vectors,
@@ -946,27 +929,21 @@ this parameters is ignored.</dd>
     -------
     Embedding
         A Keras `Embedding` layer.
-
-    Raises
-    ------
-    ValueError
-        In case we haven&#39;t load word vectors and `embedding_dim` is None.
     &#34;&#34;&#34;
     if self.vector_len == 0:
-        if embedding_dim is None:
-            raise ValueError(
-                &#39;You have to give a value to the `embedding_dim` parameter&#39;
-            )
-        vector_len = embedding_dim
-        kwargs[&#39;trainable&#39;] = True
+        layer = Embedding(
+            input_dim=len(self.vocab),
+            output_dim=output_dim,
+            input_length=input_length,
+            trainable=True,
+            **kwargs)
     else:
-        vector_len = self.vector_len
-    layer = Embedding(
-        input_dim=len(self.vocab),
-        output_dim=vector_len,
-        input_length=input_length,
-        weights=[self.vectors],
-        **kwargs)
+        layer = Embedding(
+            input_dim=len(self.vocab),
+            output_dim=self.vector_len,
+            input_length=input_length,
+            weights=[self.vectors],
+            **kwargs)
     return layer</code></pre>
 </details>
 </dd>

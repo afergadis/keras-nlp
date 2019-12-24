@@ -98,7 +98,7 @@ class WordVectors:
         """
         raise NotImplementedError
 
-    def get_embedding_layer(self, input_length, embedding_dim=None, **kwargs):
+    def get_embedding_layer(self, input_length, output_dim=None, **kwargs):
         """
         Builds an Embedding layer.
 
@@ -112,7 +112,7 @@ class WordVectors:
             The value to set in the `input_length` parameter of the
             `Embedding` layer.
 
-        embedding_dim : int or None, default None
+        output_dim : int or None, default None
             In case of creating an Embedding layer with trainable weights
             (we haven't call the load method), this parameters should be set
             to the desired embedding dimensions. If there are loaded vectors,
@@ -125,27 +125,21 @@ class WordVectors:
         -------
         Embedding
             A Keras `Embedding` layer.
-
-        Raises
-        ------
-        ValueError
-            In case we haven't load word vectors and `embedding_dim` is None.
         """
         if self.vector_len == 0:
-            if embedding_dim is None:
-                raise ValueError(
-                    'You have to give a value to the `embedding_dim` parameter'
-                )
-            vector_len = embedding_dim
-            kwargs['trainable'] = True
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=output_dim,
+                input_length=input_length,
+                trainable=True,
+                **kwargs)
         else:
-            vector_len = self.vector_len
-        layer = Embedding(
-            input_dim=len(self.vocab),
-            output_dim=vector_len,
-            input_length=input_length,
-            weights=[self.vectors],
-            **kwargs)
+            layer = Embedding(
+                input_dim=len(self.vocab),
+                output_dim=self.vector_len,
+                input_length=input_length,
+                weights=[self.vectors],
+                **kwargs)
         return layer
 
     def __getitem__(self, item):
