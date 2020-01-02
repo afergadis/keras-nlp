@@ -1,4 +1,5 @@
 import numpy as np
+from os import path
 from keras_nlp.preprocessing import sent_tokenize
 from unittest import TestCase
 from keras_nlp.preprocessing.text import SentCharVectorizer
@@ -96,6 +97,26 @@ class TestSentenceCharVectorizerWithSmallValues(TestCase):
         result = self.vectorizer.vectors_to_texts(vectors)
         expected = [DOC0_SWC_TPRE, DOC1_SWC_TPRE]
         self.assertListEqual(result, expected)
+
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = SentCharVectorizer(sent_tokenize)
+        doc = open(path.join(path.dirname(__file__), 'lorem_ipsum.txt')).read()
+        vectorizer.fit_on_texts([doc])
+        doc_sents = sent_tokenize(doc)
+        doc_sents = [
+            vectorizer._apply_filters(s) for s in doc_sents
+        ]
+        words_len = [len(sent.split()) for sent in doc_sents]
+        chars_len = [len(word) for sent in doc_sents for word in sent.split()]
+        avg_words = int(sum(words_len) / len(words_len))
+        avg_chars = int(sum(chars_len) / len(chars_len))
+        target_shape = (int(len(doc_sents) / 2), avg_words, avg_chars)
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors([doc],
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don't consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
 
 
 class TestSentenceCharVectorizerWithLargeValues(TestCase):

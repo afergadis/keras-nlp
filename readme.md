@@ -1,7 +1,19 @@
 # Keras NLP
 This is a library with useful functionality to prepare text for Keras models.
 
-## The Problem
+# Installation
+Option 1: Clone the repository and install from the local directory.
+```bash
+$ git clone https://github.com/afergadis/keras-nlp
+$ python setup.py install
+```
+
+Option 2: Install from GitHub without cloning the repository.
+```bash
+$ pip install --upgrade https://github.com/afergadis/keras-nlp/tarball/master
+```
+
+# The "Problem"
 We have list of texts (documents) and we want to convert them to list of 
 ids. The easy case is when we want just a sequence of words per text.  Using
 the Keras tools we can do:
@@ -43,19 +55,19 @@ And what if we want sentences, words and characters per word, all of them in
 fixed numbers?  Of course we can do those writing some more lines of code, 
 **or** we can just use *Vectorizers*.
 
-## A new Approach 
+# A new Approach 
 
 The main functionality provided is the *Vectorization* of texts.
 Input texts are tokenized and converted to numbers, padded or truncated to
 the given shape.
 
 There are four types of Vectorizers.
-* WordVectorizer
-* CharVectorizer
-* SentWordVectorizer
-* SentCharVectorizer
+* [WordVectorizer](#word-vectorizer)
+* [CharVectorizer](#char-vectorizer)
+* [SentWordVectorizer](#sent-word-vectorizer)
+* [SentCharVectorizer](#sent-char-vectorizer)
 
-### Word Vectorizer
+## Word Vectorizer
 The `WordVectorizer` will take as input a list of texts and will return an 
 array of shape `(num_of_texts, max_words)`. The `max_words` is the number of
 maximum words per text and is the same for all texts. As a number it can be
@@ -80,7 +92,7 @@ Print the first three words of the first document.
 ['phasellus', 'fermentum', 'tellus']
 ```    
 
-### Char Vectorizer
+## Char Vectorizer
 A `CharVectorizer` will tokenize the input to its characters. So the output
 for a list of texts will be an array of shape `(num_of_texts, max_words
 , max_characters)`. So each word in the text will be tokenized into each
@@ -118,7 +130,7 @@ Attention: Words are truncated! 1st doc looses the first 2 words.
 [['v', 'e', 'l', 'i', 't'], ['v', 'e', 'l']]
 ```    
 
-### Sent Word Vectorizer
+## Sent Word Vectorizer
 This is a `WordVectorizer` that also splits the input texts to sentences. The
 resulting array is of shape `(num_of_texts, max_sentences, max_words)`. For
 all texts we have the same number of sentences `max_sentences` and the
@@ -172,7 +184,7 @@ Print from the first text, second sentence the first two words.
 ['in', 'vestibulum']
 ```
 
-### Sent Char Vectorizer
+## Sent Char Vectorizer
 An extension to the `CharVectorizer` to also split the input texts to
 sentences. The resulting array is of shape `(num_of_texts, max_sentences
 , max_words, max_characters)`. All texts have the same number of sentences. 
@@ -214,13 +226,14 @@ Print from the first text, second sentence the first two words.
 >>> print(decoded[0][1][:2])
 [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
 ```
-## Mappings
+##Mappings
 Two helper classes, `Glove` and `W2V` provide functionality to load word
 vectors and return an embedding layer for a given vocabulary.
 
 ```pydocstring
 >>> import tempfile
 >>> from keras_nlp import Glove, WordVectorizer
+
 >>> vectors_file = tempfile.NamedTemporaryFile(encoding='utf-8')
 >>> vectors_file.write(b'phasellus 0.1 -0.3 0.2\n')
 >>> vectors_file.write(b'fermentum 0.2 0.1 -0.1\n')
@@ -234,11 +247,30 @@ vectors and return an embedding layer for a given vocabulary.
 >>> embedding_layer = glove.get_embedding_layer(input_length=7)
 >>> assert embedding_layer.input_dim = word_vectorizer.num_tokens
 ```
-
-## Documentation
+# Documentation
 You can read about all methods and attributes of the classes in the `doc`
 directory.
 
-## Examples
+# Examples
 Working examples are available as Jupyter notebooks in the `notebooks` 
 directory.
+
+# Experimental Features
+## Truncating
+When texts have to be truncated, traditionally there are two options: `pre` to
+*drop* text from the beging of the sentences and `post` to drop from the end.
+E.g., if a sentence has length 100 tokens and we want to keep 50 tokens, the
+`pre` option will keep the last 50 tokens and the `post` the first 50.
+
+With the experimental feature introduced here we can pass a tuple with two
+decimal numbers that sum up to one. Each number is the percentage of the tokens 
+to keep from the start of the sentence (first number) and from the end of the 
+sentence. E.g. for a sentence of 100 tokens, a max sentence length 50 and
+a truncating tuple `(0.3, 0.7)` we get the `50*0.3=15` tokens from the start
+and `50*0.7=35` tokens from the end, thus discarding the tokens between.
+
+The tuple `(0, 1)` is equivalent to the `pre` option while the tuple `(1, 0)`
+to the `post` option.
+
+The `truncate` argument applies to the `texts_to_vectors` method of each
+vectorizer. The `pre` and `post` options *remain* valid!

@@ -25,7 +25,8 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">from unittest import TestCase
-
+from os import path
+from keras_nlp.preprocessing import sent_tokenize
 from keras_nlp.preprocessing.text import CharVectorizer
 
 DOC0 = &#39;Plasma samples were obtained and analysed with time-resolved &#39; \
@@ -106,6 +107,26 @@ class TestCharVectorizerWithSmallValues(TestCase):
         docs = self.vectorizer.vectors_to_texts(vectors)
         self.assertListEqual(docs[0], DOC0_SWC_TPOST)
         self.assertListEqual(docs[1], DOC1_SWC_TPOST)
+
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = CharVectorizer()
+        doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+        doc_sents = sent_tokenize(doc)
+        vectorizer.fit_on_texts(doc_sents)
+        doc_sents = [
+            vectorizer._apply_filters(s) for s in doc_sents
+        ]
+        words_len = [len(sent.split()) for sent in doc_sents]
+        chars_len = [len(word) for sent in doc_sents for word in sent.split()]
+        avg_words = int(sum(words_len) / len(words_len))
+        avg_chars = int(sum(chars_len) / len(chars_len))
+        target_shape = (avg_words, avg_chars)
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors([doc],
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
 
 
 class TestCharVectorizerWithLargeValues(TestCase):
@@ -214,10 +235,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -322,10 +343,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -408,10 +429,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -542,10 +563,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -684,10 +705,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -768,10 +789,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -805,7 +826,27 @@ not have a method with the specified name.</p></section>
             truncating=&#39;post&#39;)
         docs = self.vectorizer.vectors_to_texts(vectors)
         self.assertListEqual(docs[0], DOC0_SWC_TPOST)
-        self.assertListEqual(docs[1], DOC1_SWC_TPOST)</code></pre>
+        self.assertListEqual(docs[1], DOC1_SWC_TPOST)
+
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = CharVectorizer()
+        doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+        doc_sents = sent_tokenize(doc)
+        vectorizer.fit_on_texts(doc_sents)
+        doc_sents = [
+            vectorizer._apply_filters(s) for s in doc_sents
+        ]
+        words_len = [len(sent.split()) for sent in doc_sents]
+        chars_len = [len(word) for sent in doc_sents for word in sent.split()]
+        avg_words = int(sum(words_len) / len(words_len))
+        avg_chars = int(sum(chars_len) / len(chars_len))
+        target_shape = (avg_words, avg_chars)
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors([doc],
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -825,6 +866,36 @@ not have a method with the specified name.</p></section>
 <pre><code class="python">def setUp(self) -&gt; None:
     self.vectorizer = CharVectorizer()
     self.vectorizer.fit_on_texts(DOCS)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets"><code class="name flex">
+<span>def <span class="ident">test_vectors_to_text_truncating_offsets</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_vectors_to_text_truncating_offsets(self):
+    vectorizer = CharVectorizer()
+    doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+    doc_sents = sent_tokenize(doc)
+    vectorizer.fit_on_texts(doc_sents)
+    doc_sents = [
+        vectorizer._apply_filters(s) for s in doc_sents
+    ]
+    words_len = [len(sent.split()) for sent in doc_sents]
+    chars_len = [len(word) for sent in doc_sents for word in sent.split()]
+    avg_words = int(sum(words_len) / len(words_len))
+    avg_chars = int(sum(chars_len) / len(chars_len))
+    target_shape = (avg_words, avg_chars)
+    truncating_shape = (0.5, 0.5)
+    vectors = vectorizer.texts_to_vectors([doc],
+                                          shape=target_shape,
+                                          truncating=truncating_shape)
+    # Don&#39;t consider the number of texts.
+    self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
 </dd>
 <dt id="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post"><code class="name flex">
@@ -926,6 +997,7 @@ not have a method with the specified name.</p></section>
 <h4><code><a title="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues" href="#keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues">TestCharVectorizerWithSmallValues</a></code></h4>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets" href="#keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets">test_vectors_to_text_truncating_offsets</a></code></li>
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post" href="#keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post">test_vectors_to_texts_with_truncating_post</a></code></li>
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_pre" href="#keras_nlp.test.unit.preprocessing.test_charVectorizer.TestCharVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_pre">test_vectors_to_texts_with_truncating_pre</a></code></li>
 </ul>

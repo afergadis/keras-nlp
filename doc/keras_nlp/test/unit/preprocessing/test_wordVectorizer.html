@@ -24,9 +24,10 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from collections import Counter
+<pre><code class="python">from os import path
+from collections import Counter
 from unittest import TestCase
-
+from keras_nlp.preprocessing import sent_tokenize
 from keras_nlp.preprocessing.text import WordVectorizer
 
 DOC0 = &#39;Plasma samples were obtained and analysed with time-resolved &#39; \
@@ -105,6 +106,21 @@ class TestWordVectorizerWithSmallValues(TestCase):
         self.assertListEqual(docs[0], DOC0_SW_TPOST)
         self.assertListEqual(docs[1], DOC1_SW_TPOST)
 
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = WordVectorizer()
+        doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+        doc_sents = sent_tokenize(doc)
+        vectorizer.fit_on_texts(doc_sents)
+        sents_len = [len(s.split()) for s in doc_sents]  # In words.
+        avg = int(sum(sents_len) / len(sents_len))
+        target_shape = (avg, )
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors(doc_sents,
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
+
 
 class TestCharVectorizerWithLargeValues(TestCase):
     def setUp(self) -&gt; None:
@@ -167,10 +183,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -301,10 +317,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -439,10 +455,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -472,7 +488,22 @@ not have a method with the specified name.</p></section>
             DOCS, shape=(SMALL_MAX_WORDS, ), truncating=&#39;post&#39;)
         docs = self.vectorizer.vectors_to_texts(vectors)
         self.assertListEqual(docs[0], DOC0_SW_TPOST)
-        self.assertListEqual(docs[1], DOC1_SW_TPOST)</code></pre>
+        self.assertListEqual(docs[1], DOC1_SW_TPOST)
+
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = WordVectorizer()
+        doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+        doc_sents = sent_tokenize(doc)
+        vectorizer.fit_on_texts(doc_sents)
+        sents_len = [len(s.split()) for s in doc_sents]  # In words.
+        avg = int(sum(sents_len) / len(sents_len))
+        target_shape = (avg, )
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors(doc_sents,
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -492,6 +523,31 @@ not have a method with the specified name.</p></section>
 <pre><code class="python">def setUp(self) -&gt; None:
     self.vectorizer = WordVectorizer()
     self.vectorizer.fit_on_texts(DOCS)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets"><code class="name flex">
+<span>def <span class="ident">test_vectors_to_text_truncating_offsets</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def test_vectors_to_text_truncating_offsets(self):
+    vectorizer = WordVectorizer()
+    doc = open(path.join(path.dirname(__file__), &#39;lorem_ipsum.txt&#39;)).read()
+    doc_sents = sent_tokenize(doc)
+    vectorizer.fit_on_texts(doc_sents)
+    sents_len = [len(s.split()) for s in doc_sents]  # In words.
+    avg = int(sum(sents_len) / len(sents_len))
+    target_shape = (avg, )
+    truncating_shape = (0.5, 0.5)
+    vectors = vectorizer.texts_to_vectors(doc_sents,
+                                          shape=target_shape,
+                                          truncating=truncating_shape)
+    # Don&#39;t consider the number of texts.
+    self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
 </dd>
 <dt id="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post"><code class="name flex">
@@ -567,6 +623,7 @@ not have a method with the specified name.</p></section>
 <h4><code><a title="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues" href="#keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues">TestWordVectorizerWithSmallValues</a></code></h4>
 <ul class="">
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.setUp" href="#keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.setUp">setUp</a></code></li>
+<li><code><a title="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets" href="#keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_text_truncating_offsets">test_vectors_to_text_truncating_offsets</a></code></li>
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post" href="#keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_post">test_vectors_to_texts_with_truncating_post</a></code></li>
 <li><code><a title="keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_pre" href="#keras_nlp.test.unit.preprocessing.test_wordVectorizer.TestWordVectorizerWithSmallValues.test_vectors_to_texts_with_truncating_pre">test_vectors_to_texts_with_truncating_pre</a></code></li>
 </ul>

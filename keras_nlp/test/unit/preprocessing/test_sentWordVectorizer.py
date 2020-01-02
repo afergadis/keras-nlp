@@ -1,6 +1,7 @@
 import numpy as np
+from os import path
 from unittest import TestCase
-
+from keras_nlp.preprocessing import sent_tokenize
 from keras_nlp.preprocessing.text import SentWordVectorizer
 
 DOC0 = 'Plasma samples were obtained and analysed with time-resolved ' \
@@ -39,8 +40,6 @@ LARGE_MAX_SENTENCES, LARGE_MAX_WORDS = 5, 100
 
 class TestSentWordVectorizer(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
-        self.sent_tokenize = sent_tokenize
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
@@ -56,16 +55,15 @@ class TestSentWordVectorizer(TestCase):
         expected_docs = []
         for doc in DOCS:
             _doc = []
-            sentences = self.sent_tokenize(doc)
+            sentences = sent_tokenize(doc)
             for sentence in sentences:
                 _doc.append(self.vectorizer._apply_filters(sentence).split())
             expected_docs.append(_doc)
         self.assertListEqual(docs, expected_docs)
 
 
-class TestSentWordVectorizerWithSmallValues(TestCase):
+class TestSentWordVectorizerTruncating(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
@@ -89,17 +87,31 @@ class TestSentWordVectorizerWithSmallValues(TestCase):
         expected = [DOC0_SW_TPRE, DOC1_SW_TPRE]
         self.assertListEqual(result, expected)
 
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = SentWordVectorizer(sent_tokenize)
+        doc = open(path.join(path.dirname(__file__), 'lorem_ipsum.txt')).read()
+        vectorizer.fit_on_texts([doc])
+        doc_sents = sent_tokenize(doc)
+        doc_sents = [
+            vectorizer._apply_filters(s[SMALL_MAX_WORDS]) for s in doc_sents
+        ]
+        target_shape = (int(len(doc_sents) / 2), SMALL_MAX_WORDS)
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors([doc],
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don't consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
 
-class TestSentWordVectorizerWithLargeValues(TestCase):
+
+class TestSentWordVectorizerPadding(TestCase):
     def setUp(self) -> None:
-        from nltk import sent_tokenize
-        self.sent_tokenize = sent_tokenize
         self.vectorizer = SentWordVectorizer(sent_tokenize)
         self.vectorizer.fit_on_texts(DOCS)
 
     def expected_vector(self, doc):
         # Length of sentences of DOC0.
-        sents = self.sent_tokenize(doc)
+        sents: list = sent_tokenize(doc)
         sent_len = len(sents)
         # LARGE_MAX_SENTENCES must be at least by 1 larger from the total
         # sentences of the document, to test padding.
@@ -118,9 +130,7 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
 
     def test_text_to_vectors_padding_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
-            DOCS,
-            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-            padding='pre')
+            DOCS, shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS), padding='pre')
         expected_padded_vector = self.expected_vector(DOC0)
         test_vector = vectors[0][0]  # Doc 0, sentence 0
         equiv = np.array_equiv(test_vector, expected_padded_vector)
@@ -128,9 +138,7 @@ class TestSentWordVectorizerWithLargeValues(TestCase):
 
     def test_text_to_vectors_padding_post(self):
         vectors = self.vectorizer.texts_to_vectors(
-            DOCS,
-            shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS),
-            padding='post')
+            DOCS, shape=(LARGE_MAX_SENTENCES, LARGE_MAX_WORDS), padding='post')
         expected_padded_vector = self.expected_vector(DOC0)
         test_vector = vectors[0][-1]  # Doc 0, last sentence
         equiv = np.array_equiv(test_vector, expected_padded_vector)

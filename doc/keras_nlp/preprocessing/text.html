@@ -27,14 +27,9 @@
 <pre><code class="python">import logging
 import abc
 import re
-from abc import ABC
-
 import numpy as np
 from collections import Counter
-from keras_preprocessing.sequence import pad_sequences
 from keras.utils.generic_utils import Progbar
-
-logger = logging.getLogger(__file__)
 
 
 def calc_stats(array):
@@ -85,14 +80,18 @@ class Vectorizer:
             The maximum number of tokens in the vocabulary of the vectorizer.
             If is set to None, then all the tokens found using `fit_on_texts`
             method will be in the vocabulary.
+
         filters : str
             Defines the characters that will be removed (replaced with a space
             character) from the texts.
+
         lower : bool, default True
             Define it the text will be lower cased before processing.
+
         oov_token : str, None, default None
             If set to a string, then the vocabulary will have an entry that
             represents an out of vocabulary token.
+
         verbose : int in [0, 2], default 1
             The verbosity of the output during the vectorization methods.
         &#34;&#34;&#34;
@@ -207,6 +206,46 @@ class Vectorizer:
         raise NotImplementedError()
 
     @staticmethod
+    def _pad_sequences(sequences,
+                       maxlen,
+                       padding=&#39;pre&#39;,
+                       truncating=&#39;pre&#39;,
+                       pad_value=0):
+        array = np.full(shape=(len(sequences), maxlen), fill_value=pad_value)
+        for idx, seq in enumerate(sequences):
+            if not len(seq):
+                continue
+            if len(seq) &lt; maxlen:
+                if padding == &#39;pre&#39;:
+                    array[idx, -len(seq):] = seq
+                elif padding == &#39;post&#39;:
+                    array[idx, :len(seq)] = seq
+                else:
+                    raise ValueError(
+                        f&#39;Unknown option `{padding}` for padding.&#39;)
+            else:
+                if truncating == &#39;pre&#39;:
+                    array[idx, :] = seq[-maxlen:]
+                elif truncating == &#39;post&#39;:
+                    array[idx, :] = seq[:maxlen]
+                else:
+                    if not isinstance(truncating, (tuple, list)):
+                        raise ValueError(
+                            f&#39;Unknown option `{truncating}` for truncating.&#39;)
+                    if len(truncating) != 2:
+                        raise ValueError(
+                            &#39;`truncating` is expected to be a tuple &#39;
+                            &#39;with two numbers; one for the &#39;
+                            &#39;percentage of text to keep from the &#39;
+                            &#39;beginning and one for the end.&#39;)
+                    if sum(truncating) != 1:
+                        raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                    pre = round(maxlen * truncating[0])
+                    post = int(np.ceil(maxlen * truncating[1]))
+                    array[idx, :] = seq[:pre] + seq[-post:]
+        return array
+
+    @staticmethod
     def _reshape(vectors,
                  num_rows,
                  padding=&#39;pre&#39;,
@@ -264,8 +303,22 @@ class Vectorizer:
             elif truncating == &#39;post&#39;:
                 array = vectors[:target_shape[0], :]
             else:
-                raise ValueError(
-                    &#39;Unknown option `{}` for truncating.&#39;.format(truncating))
+                if not isinstance(truncating, (tuple, list)):
+                    raise ValueError(
+                        f&#39;Unknown option `{truncating}` for truncating.&#39;)
+                if len(truncating) != 2:
+                    raise ValueError(&#39;`truncating` is expected to be a tuple &#39;
+                                     &#39;with two numbers; one for the &#39;
+                                     &#39;percentage of text to keep from the &#39;
+                                     &#39;beginning and one for the end.&#39;)
+                if sum(truncating) != 1:
+                    raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                pre = round(target_shape[0] * truncating[0])
+                post = int(np.ceil(target_shape[0] * truncating[1]))
+                # Mask the values between pre and post to False.
+                mask = np.ones(len(vectors), dtype=bool)
+                mask[range(pre, len(vectors) - post)] = False
+                array = vectors[mask, ...]
         else:
             array = vectors
         return array
@@ -301,7 +354,7 @@ class Vectorizer:
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;post&#39;,
-                         pad_value=0):
+                         pad_value=None):
         &#34;&#34;&#34;
         Convert a list of texts to a 2D, 3D or 4D array.
 
@@ -338,8 +391,9 @@ class Vectorizer:
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
-        pad_value : int, default 0
-            The value to use when padding is needed.
+        pad_value : int, default None
+            The value to use when padding is needed. If the value is `None`
+            then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
 
         Returns
         -------
@@ -458,12 +512,11 @@ class CharVectorizer(Vectorizer):
 
     Examples
     --------
-    &gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token=&#39;?&#39;,
-    ... characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
+    &gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token=&#39;?&#39;, \
+    characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
     &gt;&gt;&gt; texts = [&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;,
     ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;]
-
-    In case `characters` are set, fit_on_texts it&#39;s secondary.
+    &gt;&gt;&gt; # In case `characters` are set, fit_on_texts it&#39;s secondary.
     &gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)
     &gt;&gt;&gt; docs = [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;,
     ... &#39;Nulla porttitor felis risus, vitae facilisis massa consectetur id.&#39;]
@@ -585,17 +638,17 @@ class CharVectorizer(Vectorizer):
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
-            fill_value=self.token2id[&#39;_PAD_&#39;],
+            fill_value=pad_value,
             dtype=int)
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
         for i, doc in enumerate(sequences):
-            chars_vector = pad_sequences(
+            chars_vector = self._pad_sequences(
                 doc,
                 max_characters,
                 padding=padding,
                 truncating=truncating,
-                value=pad_value)
+                pad_value=pad_value)
             vectors[i] = self._reshape(chars_vector, max_words, padding,
                                        truncating, pad_value)
             progbar.update(i)
@@ -607,7 +660,7 @@ class CharVectorizer(Vectorizer):
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 2:
                 raise ValueError(
@@ -615,6 +668,8 @@ class CharVectorizer(Vectorizer):
                     f&#39;maximum words per text and the maximum &#39;
                     f&#39;characters per word. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -684,9 +739,7 @@ class WordVectorizer(Vectorizer):
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_words)
     (2, 7)
     &gt;&gt;&gt; decoded = word_vectorizer.vectors_to_texts(vectors)
-
-    First 3 words of the 1st doc in docs.
-    &gt;&gt;&gt; print(decoded[0][:3])
+    &gt;&gt;&gt; print(decoded[0][:3])  # First 3 words of the 1st doc in docs.
     [&#39;phasellus&#39;, &#39;fermentum&#39;, &#39;tellus&#39;]
     &#34;&#34;&#34;
 
@@ -777,13 +830,15 @@ class WordVectorizer(Vectorizer):
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 1:
                 raise ValueError(
                     f&#39;The `shape` should be of rank 1 defining the&#39;
                     f&#39;maximum words per text. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -809,12 +864,12 @@ class WordVectorizer(Vectorizer):
         if shape is None:
             shape = (self.words_stats[&#39;max&#39;], )
 
-        vectors = pad_sequences(
+        vectors = self._pad_sequences(
             _texts,
             shape[0],
             padding=padding,
             truncating=truncating,
-            value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=self.token2id[&#39;_PAD_&#39;])
         return vectors
 
     def stats(self):
@@ -839,10 +894,9 @@ class SentCharVectorizer(CharVectorizer):
     Examples
     --------
     &gt;&gt;&gt; sent_char_vectorizer = SentCharVectorizer(verbose=0)
-
-    Two documents. The fists with two sentences and the second with one.
-    The 1st document is already tokenized on sentences. Alternately, you
-    may pass a sent_tokenizer callable.
+    &gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+    &gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+    &gt;&gt;&gt; # may pass a sent_tokenizer callable.
     &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;,
     ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;],
     ... [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;]]
@@ -851,15 +905,10 @@ class SentCharVectorizer(CharVectorizer):
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words, max_characters)
     (2, 2, 7, 10)
     &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
-
-    Print from the first text, second sentence the first two words.
-    As list of characters:
-    &gt;&gt;&gt; print(decoded[0][1][:2])
+    &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [[&#39;i&#39;, &#39;n&#39;], [&#39;v&#39;, &#39;e&#39;, &#39;s&#39;, &#39;t&#39;, &#39;i&#39;, &#39;b&#39;, &#39;u&#39;, &#39;l&#39;, &#39;u&#39;, &#39;m&#39;]]
-
-    As list of words:
     &gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
-    &gt;&gt;&gt; print(decoded_words[0][1][:2])
+    &gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
@@ -952,7 +1001,7 @@ class SentCharVectorizer(CharVectorizer):
         max_sentences, max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_sentences, max_words, max_characters),
-            fill_value=self.token2id[&#39;_PAD_&#39;],
+            fill_value=pad_value,
             dtype=int)
 
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
@@ -961,15 +1010,15 @@ class SentCharVectorizer(CharVectorizer):
             num_sentences = len(sequences[i])
             words_chars_vector = np.full(
                 shape=(num_sentences, max_words, max_characters),
-                fill_value=self.token2id[&#39;_PAD_&#39;],
+                fill_value=pad_value,
                 dtype=int)
             for j in range(num_sentences):
-                chars_vector = pad_sequences(
+                chars_vector = self._pad_sequences(
                     sequences[i][j],
                     max_characters,
                     padding=padding,
                     truncating=truncating,
-                    value=pad_value)
+                    pad_value=pad_value)
                 words_chars_vector[j] = self._reshape(
                     chars_vector, max_words, padding, truncating, pad_value)
             # Put the words_chars_vector into the document vector.
@@ -985,7 +1034,7 @@ class SentCharVectorizer(CharVectorizer):
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 3:
                 raise ValueError(
@@ -994,7 +1043,8 @@ class SentCharVectorizer(CharVectorizer):
                     f&#39;maximum words per sentence and the maximum &#39;
                     f&#39;characters per word. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
-
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -1076,21 +1126,19 @@ class SentWordVectorizer(WordVectorizer):
     Examples
     --------
     &gt;&gt;&gt; sent_word_vectorizer = SentWordVectorizer(verbose=0)
-
-    Two documents. The fists with two sentences and the second with one.
-    The 1st document is already tokenized on sentences. Alternately, you
-    may pass a sent_tokenizer callable.
-    &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus sodales varius.&#39;,
-    ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;],
-    ... [&#39;Nam accumsan velit vel ligula convallis.&#39;] ]
+    &gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+    &gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+    &gt;&gt;&gt; # may pass a sent_tokenizer callable.
+    &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus sodales varius.&#39;, \
+    &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;], \
+    [&#39;Nam accumsan velit vel ligula convallis.&#39;] \
+    ]
     &gt;&gt;&gt; sent_word_vectorizer.fit_on_texts(texts)
     &gt;&gt;&gt; vectors = sent_word_vectorizer.texts_to_vectors(texts)
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words)
     (2, 2, 7)
     &gt;&gt;&gt; decoded = sent_word_vectorizer.vectors_to_texts(vectors)
-
-    Print from the fist text, second sentence, the first two words.
-    &gt;&gt;&gt; print(decoded[0][1][:2])
+    &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
@@ -1176,12 +1224,12 @@ class SentWordVectorizer(WordVectorizer):
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
         for i in range(len(sequences)):
-            words_vector = pad_sequences(
+            words_vector = self._pad_sequences(
                 sequences[i],
                 max_words,
                 padding=padding,
                 truncating=truncating,
-                value=pad_value)
+                pad_value=pad_value)
             vectors[i] = self._reshape(
                 words_vector,
                 num_rows=max_sentences,
@@ -1198,7 +1246,7 @@ class SentWordVectorizer(WordVectorizer):
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 2:
                 raise ValueError(
@@ -1206,6 +1254,8 @@ class SentWordVectorizer(WordVectorizer):
                     f&#39;maximum sentences per text and the maximum &#39;
                     f&#39;words per sentence. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -1258,7 +1308,7 @@ class SentWordVectorizer(WordVectorizer):
             shape,
             padding=padding,
             truncating=truncating,
-            pad_value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=pad_value)
         return vectors
 
     def stats(self):
@@ -1348,13 +1398,11 @@ max_words, max_characters)</code>.</p>
 <p>For each text (document) keep a maximum number of words. Each word is
 represented with a list of <code>max_characters</code> ids.</p>
 <h2 id="examples">Examples</h2>
-<pre><code>&gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token='?',
-... characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
+<pre><code>&gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token='?',     characters='abcdefghijklmnopqrstuvwxyz', verbose=0)
 &gt;&gt;&gt; texts = ['Phasellus fermentum tellus eget libero sodales varius.',
 ... 'In vestibulum erat nec nulla porttitor dignissim.']
-</code></pre>
-<p>In case <code>characters</code> are set, fit_on_texts it's secondary.</p>
-<pre><code>&gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)
+&gt;&gt;&gt; # In case `characters` are set, fit_on_texts it's secondary.
+&gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)
 &gt;&gt;&gt; docs = ['Nam accumsan velit vel ligula convallis cursus.',
 ... 'Nulla porttitor felis risus, vitae facilisis massa consectetur id.']
 &gt;&gt;&gt; vectors = char_vectorizer.texts_to_vectors(docs)
@@ -1419,12 +1467,11 @@ represents an out of vocabulary token.</dd>
 
     Examples
     --------
-    &gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token=&#39;?&#39;,
-    ... characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
+    &gt;&gt;&gt; char_vectorizer = CharVectorizer(oov_token=&#39;?&#39;, \
+    characters=&#39;abcdefghijklmnopqrstuvwxyz&#39;, verbose=0)
     &gt;&gt;&gt; texts = [&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;,
     ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;]
-
-    In case `characters` are set, fit_on_texts it&#39;s secondary.
+    &gt;&gt;&gt; # In case `characters` are set, fit_on_texts it&#39;s secondary.
     &gt;&gt;&gt; char_vectorizer.fit_on_texts(texts)
     &gt;&gt;&gt; docs = [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;,
     ... &#39;Nulla porttitor felis risus, vitae facilisis massa consectetur id.&#39;]
@@ -1546,17 +1593,17 @@ represents an out of vocabulary token.</dd>
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
-            fill_value=self.token2id[&#39;_PAD_&#39;],
+            fill_value=pad_value,
             dtype=int)
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
         for i, doc in enumerate(sequences):
-            chars_vector = pad_sequences(
+            chars_vector = self._pad_sequences(
                 doc,
                 max_characters,
                 padding=padding,
                 truncating=truncating,
-                value=pad_value)
+                pad_value=pad_value)
             vectors[i] = self._reshape(chars_vector, max_words, padding,
                                        truncating, pad_value)
             progbar.update(i)
@@ -1568,7 +1615,7 @@ represents an out of vocabulary token.</dd>
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 2:
                 raise ValueError(
@@ -1576,6 +1623,8 @@ represents an out of vocabulary token.</dd>
                     f&#39;maximum words per text and the maximum &#39;
                     f&#39;characters per word. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -1658,11 +1707,10 @@ represents an out of vocabulary token.</dd>
 max_sentences, max_words, max_characters)</code>.</p>
 <h2 id="examples">Examples</h2>
 <pre><code>&gt;&gt;&gt; sent_char_vectorizer = SentCharVectorizer(verbose=0)
-</code></pre>
-<p>Two documents. The fists with two sentences and the second with one.
-The 1st document is already tokenized on sentences. Alternately, you
-may pass a sent_tokenizer callable.</p>
-<pre><code>&gt;&gt;&gt; texts = [['Phasellus fermentum tellus eget libero sodales varius.',
+&gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+&gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+&gt;&gt;&gt; # may pass a sent_tokenizer callable.
+&gt;&gt;&gt; texts = [['Phasellus fermentum tellus eget libero sodales varius.',
 ... 'In vestibulum erat nec nulla porttitor dignissim.'],
 ... ['Nam accumsan velit vel ligula convallis cursus.']]
 &gt;&gt;&gt; sent_char_vectorizer.fit_on_texts(texts)
@@ -1670,15 +1718,10 @@ may pass a sent_tokenizer callable.</p>
 &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words, max_characters)
 (2, 2, 7, 10)
 &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
-</code></pre>
-<p>Print from the first text, second sentence the first two words.
-As list of characters:</p>
-<pre><code>&gt;&gt;&gt; print(decoded[0][1][:2])
+&gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
 [['i', 'n'], ['v', 'e', 's', 't', 'i', 'b', 'u', 'l', 'u', 'm']]
-</code></pre>
-<p>As list of words:</p>
-<pre><code>&gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
-&gt;&gt;&gt; print(decoded_words[0][1][:2])
+&gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
+&gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
 ['in', 'vestibulum']
 </code></pre>
 <h2 id="parameters">Parameters</h2>
@@ -1739,10 +1782,9 @@ represents an out of vocabulary token.</dd>
     Examples
     --------
     &gt;&gt;&gt; sent_char_vectorizer = SentCharVectorizer(verbose=0)
-
-    Two documents. The fists with two sentences and the second with one.
-    The 1st document is already tokenized on sentences. Alternately, you
-    may pass a sent_tokenizer callable.
+    &gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+    &gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+    &gt;&gt;&gt; # may pass a sent_tokenizer callable.
     &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus eget libero sodales varius.&#39;,
     ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;],
     ... [&#39;Nam accumsan velit vel ligula convallis cursus.&#39;]]
@@ -1751,15 +1793,10 @@ represents an out of vocabulary token.</dd>
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words, max_characters)
     (2, 2, 7, 10)
     &gt;&gt;&gt; decoded = sent_char_vectorizer.vectors_to_texts(vectors)
-
-    Print from the first text, second sentence the first two words.
-    As list of characters:
-    &gt;&gt;&gt; print(decoded[0][1][:2])
+    &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [[&#39;i&#39;, &#39;n&#39;], [&#39;v&#39;, &#39;e&#39;, &#39;s&#39;, &#39;t&#39;, &#39;i&#39;, &#39;b&#39;, &#39;u&#39;, &#39;l&#39;, &#39;u&#39;, &#39;m&#39;]]
-
-    As list of words:
     &gt;&gt;&gt; decoded_words = sent_char_vectorizer.vectors_to_texts(vectors, True)
-    &gt;&gt;&gt; print(decoded_words[0][1][:2])
+    &gt;&gt;&gt; print(decoded_words[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
@@ -1852,7 +1889,7 @@ represents an out of vocabulary token.</dd>
         max_sentences, max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_sentences, max_words, max_characters),
-            fill_value=self.token2id[&#39;_PAD_&#39;],
+            fill_value=pad_value,
             dtype=int)
 
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
@@ -1861,15 +1898,15 @@ represents an out of vocabulary token.</dd>
             num_sentences = len(sequences[i])
             words_chars_vector = np.full(
                 shape=(num_sentences, max_words, max_characters),
-                fill_value=self.token2id[&#39;_PAD_&#39;],
+                fill_value=pad_value,
                 dtype=int)
             for j in range(num_sentences):
-                chars_vector = pad_sequences(
+                chars_vector = self._pad_sequences(
                     sequences[i][j],
                     max_characters,
                     padding=padding,
                     truncating=truncating,
-                    value=pad_value)
+                    pad_value=pad_value)
                 words_chars_vector[j] = self._reshape(
                     chars_vector, max_words, padding, truncating, pad_value)
             # Put the words_chars_vector into the document vector.
@@ -1885,7 +1922,7 @@ represents an out of vocabulary token.</dd>
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 3:
                 raise ValueError(
@@ -1894,7 +1931,8 @@ represents an out of vocabulary token.</dd>
                     f&#39;maximum words per sentence and the maximum &#39;
                     f&#39;characters per word. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
-
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -1993,21 +2031,16 @@ represents an out of vocabulary token.</dd>
 max_sentences, max_words)</code>.</p>
 <h2 id="examples">Examples</h2>
 <pre><code>&gt;&gt;&gt; sent_word_vectorizer = SentWordVectorizer(verbose=0)
-</code></pre>
-<p>Two documents. The fists with two sentences and the second with one.
-The 1st document is already tokenized on sentences. Alternately, you
-may pass a sent_tokenizer callable.</p>
-<pre><code>&gt;&gt;&gt; texts = [['Phasellus fermentum tellus sodales varius.',
-... 'In vestibulum erat nec nulla porttitor dignissim.'],
-... ['Nam accumsan velit vel ligula convallis.'] ]
+&gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+&gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+&gt;&gt;&gt; # may pass a sent_tokenizer callable.
+&gt;&gt;&gt; texts = [['Phasellus fermentum tellus sodales varius.',     'In vestibulum erat nec nulla porttitor dignissim.'],     ['Nam accumsan velit vel ligula convallis.']     ]
 &gt;&gt;&gt; sent_word_vectorizer.fit_on_texts(texts)
 &gt;&gt;&gt; vectors = sent_word_vectorizer.texts_to_vectors(texts)
 &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words)
 (2, 2, 7)
 &gt;&gt;&gt; decoded = sent_word_vectorizer.vectors_to_texts(vectors)
-</code></pre>
-<p>Print from the fist text, second sentence, the first two words.</p>
-<pre><code>&gt;&gt;&gt; print(decoded[0][1][:2])
+&gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
 ['in', 'vestibulum']
 </code></pre>
 <h2 id="parameters">Parameters</h2>
@@ -2064,21 +2097,19 @@ represents an out of vocabulary token.</dd>
     Examples
     --------
     &gt;&gt;&gt; sent_word_vectorizer = SentWordVectorizer(verbose=0)
-
-    Two documents. The fists with two sentences and the second with one.
-    The 1st document is already tokenized on sentences. Alternately, you
-    may pass a sent_tokenizer callable.
-    &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus sodales varius.&#39;,
-    ... &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;],
-    ... [&#39;Nam accumsan velit vel ligula convallis.&#39;] ]
+    &gt;&gt;&gt; # Two documents. The fists with two sentences and the second with one.
+    &gt;&gt;&gt; # The 1st document is already tokenized on sentences. Alternately, you
+    &gt;&gt;&gt; # may pass a sent_tokenizer callable.
+    &gt;&gt;&gt; texts = [[&#39;Phasellus fermentum tellus sodales varius.&#39;, \
+    &#39;In vestibulum erat nec nulla porttitor dignissim.&#39;], \
+    [&#39;Nam accumsan velit vel ligula convallis.&#39;] \
+    ]
     &gt;&gt;&gt; sent_word_vectorizer.fit_on_texts(texts)
     &gt;&gt;&gt; vectors = sent_word_vectorizer.texts_to_vectors(texts)
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_sentences, max_words)
     (2, 2, 7)
     &gt;&gt;&gt; decoded = sent_word_vectorizer.vectors_to_texts(vectors)
-
-    Print from the fist text, second sentence, the first two words.
-    &gt;&gt;&gt; print(decoded[0][1][:2])
+    &gt;&gt;&gt; print(decoded[0][1][:2])  # 1st text, 2d sentence, 2 words
     [&#39;in&#39;, &#39;vestibulum&#39;]
     &#34;&#34;&#34;
 
@@ -2164,12 +2195,12 @@ represents an out of vocabulary token.</dd>
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
         for i in range(len(sequences)):
-            words_vector = pad_sequences(
+            words_vector = self._pad_sequences(
                 sequences[i],
                 max_words,
                 padding=padding,
                 truncating=truncating,
-                value=pad_value)
+                pad_value=pad_value)
             vectors[i] = self._reshape(
                 words_vector,
                 num_rows=max_sentences,
@@ -2186,7 +2217,7 @@ represents an out of vocabulary token.</dd>
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 2:
                 raise ValueError(
@@ -2194,6 +2225,8 @@ represents an out of vocabulary token.</dd>
                     f&#39;maximum sentences per text and the maximum &#39;
                     f&#39;words per sentence. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -2246,7 +2279,7 @@ represents an out of vocabulary token.</dd>
             shape,
             padding=padding,
             truncating=truncating,
-            pad_value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=pad_value)
         return vectors
 
     def stats(self):
@@ -2325,14 +2358,18 @@ represents an out of vocabulary token.</dd>
             The maximum number of tokens in the vocabulary of the vectorizer.
             If is set to None, then all the tokens found using `fit_on_texts`
             method will be in the vocabulary.
+
         filters : str
             Defines the characters that will be removed (replaced with a space
             character) from the texts.
+
         lower : bool, default True
             Define it the text will be lower cased before processing.
+
         oov_token : str, None, default None
             If set to a string, then the vocabulary will have an entry that
             represents an out of vocabulary token.
+
         verbose : int in [0, 2], default 1
             The verbosity of the output during the vectorization methods.
         &#34;&#34;&#34;
@@ -2447,6 +2484,46 @@ represents an out of vocabulary token.</dd>
         raise NotImplementedError()
 
     @staticmethod
+    def _pad_sequences(sequences,
+                       maxlen,
+                       padding=&#39;pre&#39;,
+                       truncating=&#39;pre&#39;,
+                       pad_value=0):
+        array = np.full(shape=(len(sequences), maxlen), fill_value=pad_value)
+        for idx, seq in enumerate(sequences):
+            if not len(seq):
+                continue
+            if len(seq) &lt; maxlen:
+                if padding == &#39;pre&#39;:
+                    array[idx, -len(seq):] = seq
+                elif padding == &#39;post&#39;:
+                    array[idx, :len(seq)] = seq
+                else:
+                    raise ValueError(
+                        f&#39;Unknown option `{padding}` for padding.&#39;)
+            else:
+                if truncating == &#39;pre&#39;:
+                    array[idx, :] = seq[-maxlen:]
+                elif truncating == &#39;post&#39;:
+                    array[idx, :] = seq[:maxlen]
+                else:
+                    if not isinstance(truncating, (tuple, list)):
+                        raise ValueError(
+                            f&#39;Unknown option `{truncating}` for truncating.&#39;)
+                    if len(truncating) != 2:
+                        raise ValueError(
+                            &#39;`truncating` is expected to be a tuple &#39;
+                            &#39;with two numbers; one for the &#39;
+                            &#39;percentage of text to keep from the &#39;
+                            &#39;beginning and one for the end.&#39;)
+                    if sum(truncating) != 1:
+                        raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                    pre = round(maxlen * truncating[0])
+                    post = int(np.ceil(maxlen * truncating[1]))
+                    array[idx, :] = seq[:pre] + seq[-post:]
+        return array
+
+    @staticmethod
     def _reshape(vectors,
                  num_rows,
                  padding=&#39;pre&#39;,
@@ -2504,8 +2581,22 @@ represents an out of vocabulary token.</dd>
             elif truncating == &#39;post&#39;:
                 array = vectors[:target_shape[0], :]
             else:
-                raise ValueError(
-                    &#39;Unknown option `{}` for truncating.&#39;.format(truncating))
+                if not isinstance(truncating, (tuple, list)):
+                    raise ValueError(
+                        f&#39;Unknown option `{truncating}` for truncating.&#39;)
+                if len(truncating) != 2:
+                    raise ValueError(&#39;`truncating` is expected to be a tuple &#39;
+                                     &#39;with two numbers; one for the &#39;
+                                     &#39;percentage of text to keep from the &#39;
+                                     &#39;beginning and one for the end.&#39;)
+                if sum(truncating) != 1:
+                    raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                pre = round(target_shape[0] * truncating[0])
+                post = int(np.ceil(target_shape[0] * truncating[1]))
+                # Mask the values between pre and post to False.
+                mask = np.ones(len(vectors), dtype=bool)
+                mask[range(pre, len(vectors) - post)] = False
+                array = vectors[mask, ...]
         else:
             array = vectors
         return array
@@ -2541,7 +2632,7 @@ represents an out of vocabulary token.</dd>
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;post&#39;,
-                         pad_value=0):
+                         pad_value=None):
         &#34;&#34;&#34;
         Convert a list of texts to a 2D, 3D or 4D array.
 
@@ -2578,8 +2669,9 @@ represents an out of vocabulary token.</dd>
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
-        pad_value : int, default 0
-            The value to use when padding is needed.
+        pad_value : int, default None
+            The value to use when padding is needed. If the value is `None`
+            then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
 
         Returns
         -------
@@ -2751,7 +2843,7 @@ def stats(self):
 </details>
 </dd>
 <dt id="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors"><code class="name flex">
-<span>def <span class="ident">texts_to_vectors</span></span>(<span>self, texts, shape=None, padding='pre', truncating='post', pad_value=0)</span>
+<span>def <span class="ident">texts_to_vectors</span></span>(<span>self, texts, shape=None, padding='pre', truncating='post', pad_value=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Convert a list of texts to a 2D, 3D or 4D array.</p>
@@ -2790,8 +2882,9 @@ the value of the <code>pad_value</code> parameter.</dd>
 <dd>Defines the cutting method when
 the length of tokens/characters
 is larger than <code>max_tokens/characters</code>.</dd>
-<dt><strong><code>pad_value</code></strong> :&ensp;<code>int</code>, default <code>0</code></dt>
-<dd>The value to use when padding is needed.</dd>
+<dt><strong><code>pad_value</code></strong> :&ensp;<code>int</code>, default <code>None</code></dt>
+<dd>The value to use when padding is needed. If the value is <code>None</code>
+then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -2810,7 +2903,7 @@ def texts_to_vectors(self,
                      shape=None,
                      padding=&#39;pre&#39;,
                      truncating=&#39;post&#39;,
-                     pad_value=0):
+                     pad_value=None):
     &#34;&#34;&#34;
     Convert a list of texts to a 2D, 3D or 4D array.
 
@@ -2847,8 +2940,9 @@ def texts_to_vectors(self,
         Defines the cutting method when  the length of tokens/characters
         is larger than `max_tokens/characters`.
 
-    pad_value : int, default 0
-        The value to use when padding is needed.
+    pad_value : int, default None
+        The value to use when padding is needed. If the value is `None`
+        then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
 
     Returns
     -------
@@ -2870,8 +2964,8 @@ def texts_to_vectors(self,
 <dl>
 <dt><strong><code>vectors</code></strong> :&ensp;<code>ndarray</code></dt>
 <dd>The shape of <code>vectors</code> may be:
-<em> 2D <code>(num_of_texts, num_of_tokens)</code> from <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a>;
-</em> 3D <code>(num_of_texts, num_of_sentences, num_of_words)</code> from
+* 2D <code>(num_of_texts, num_of_tokens)</code> from <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a>;
+* 3D <code>(num_of_texts, num_of_sentences, num_of_words)</code> from
 <a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a>;
 * 3D <code>(num_of_texts, num_of_words, num_of_characters)</code> from
 <a title="keras_nlp.preprocessing.text.CharVectorizer" href="#keras_nlp.preprocessing.text.CharVectorizer"><code>CharVectorizer</code></a>;
@@ -2882,8 +2976,8 @@ num_of_characters)</code> from <a title="keras_nlp.preprocessing.text.SentCharVe
 <dl>
 <dt><code>list</code></dt>
 <dd>The list has length of <code>num_of_texts</code>.
-<em> In case of 2D input, the list has the words of the texts.
-</em> In case of 3D input, the list has a list sentences. Each item of
+* In case of 2D input, the list has the words of the texts.
+* In case of 3D input, the list has a list sentences. Each item of
 the nested list is a word in case of <a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a>,
 or the list has a list of words. Each item of the word's list is
 the characters of the words.
@@ -2986,9 +3080,7 @@ max_words)</code>.</p>
 &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_words)
 (2, 7)
 &gt;&gt;&gt; decoded = word_vectorizer.vectors_to_texts(vectors)
-</code></pre>
-<p>First 3 words of the 1st doc in docs.</p>
-<pre><code>&gt;&gt;&gt; print(decoded[0][:3])
+&gt;&gt;&gt; print(decoded[0][:3])  # First 3 words of the 1st doc in docs.
 ['phasellus', 'fermentum', 'tellus']
 </code></pre>
 <h2 id="parameters">Parameters</h2>
@@ -3041,9 +3133,7 @@ represents an out of vocabulary token.</dd>
     &gt;&gt;&gt; print(vectors.shape)  # (len(texts), max_words)
     (2, 7)
     &gt;&gt;&gt; decoded = word_vectorizer.vectors_to_texts(vectors)
-
-    First 3 words of the 1st doc in docs.
-    &gt;&gt;&gt; print(decoded[0][:3])
+    &gt;&gt;&gt; print(decoded[0][:3])  # First 3 words of the 1st doc in docs.
     [&#39;phasellus&#39;, &#39;fermentum&#39;, &#39;tellus&#39;]
     &#34;&#34;&#34;
 
@@ -3134,13 +3224,15 @@ represents an out of vocabulary token.</dd>
                          shape=None,
                          padding=&#39;pre&#39;,
                          truncating=&#39;pre&#39;,
-                         pad_value=0):
+                         pad_value=None):
         if shape is not None:
             if len(shape) != 1:
                 raise ValueError(
                     f&#39;The `shape` should be of rank 1 defining the&#39;
                     f&#39;maximum words per text. Found a shape &#39;
                     f&#39;with rank {len(shape)}.&#39;)
+        if pad_value is None:
+            pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
@@ -3166,12 +3258,12 @@ represents an out of vocabulary token.</dd>
         if shape is None:
             shape = (self.words_stats[&#39;max&#39;], )
 
-        vectors = pad_sequences(
+        vectors = self._pad_sequences(
             _texts,
             shape[0],
             padding=padding,
             truncating=truncating,
-            value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=self.token2id[&#39;_PAD_&#39;])
         return vectors
 
     def stats(self):

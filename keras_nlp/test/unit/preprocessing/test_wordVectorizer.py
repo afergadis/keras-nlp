@@ -1,6 +1,7 @@
+from os import path
 from collections import Counter
 from unittest import TestCase
-
+from keras_nlp.preprocessing import sent_tokenize
 from keras_nlp.preprocessing.text import WordVectorizer
 
 DOC0 = 'Plasma samples were obtained and analysed with time-resolved ' \
@@ -78,6 +79,21 @@ class TestWordVectorizerWithSmallValues(TestCase):
         docs = self.vectorizer.vectors_to_texts(vectors)
         self.assertListEqual(docs[0], DOC0_SW_TPOST)
         self.assertListEqual(docs[1], DOC1_SW_TPOST)
+
+    def test_vectors_to_text_truncating_offsets(self):
+        vectorizer = WordVectorizer()
+        doc = open(path.join(path.dirname(__file__), 'lorem_ipsum.txt')).read()
+        doc_sents = sent_tokenize(doc)
+        vectorizer.fit_on_texts(doc_sents)
+        sents_len = [len(s.split()) for s in doc_sents]  # In words.
+        avg = int(sum(sents_len) / len(sents_len))
+        target_shape = (avg, )
+        truncating_shape = (0.5, 0.5)
+        vectors = vectorizer.texts_to_vectors(doc_sents,
+                                              shape=target_shape,
+                                              truncating=truncating_shape)
+        # Don't consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
 
 
 class TestCharVectorizerWithLargeValues(TestCase):
