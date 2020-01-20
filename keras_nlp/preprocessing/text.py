@@ -4,6 +4,7 @@ import re
 import numpy as np
 from collections import Counter
 from keras.utils.generic_utils import Progbar
+from keras_nlp.preprocessing import segment
 
 
 def calc_stats(array):
@@ -560,17 +561,16 @@ class CharVectorizer(Vectorizer):
         """
         super(CharVectorizer, self).__init__(num_chars, filters, lower,
                                              oov_token, verbose)
-        self.word_tokenize = word_tokenize
+        if word_tokenize is None:
+            self.word_tokenize = segment.word_tokenize
         self.num_chars = num_chars
 
         if characters is None:
             self.characters = None
         elif isinstance(characters, str):
             self.characters = [c for c in characters]
-            self.fit_on_texts([])
         else:
             self.characters = characters
-            self.fit_on_texts([])
 
         self.words_stats = None
         self.chars_stats = None
@@ -583,7 +583,7 @@ class CharVectorizer(Vectorizer):
         if self.oov_token is not None:
             self.token2id[self.oov_token] = 1
         if self.characters is None:
-            progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+            progbar = Progbar(len(texts), verbose=self.verbose)
             for i, text in enumerate(texts):
                 if isinstance(text, list):
                     text = self._apply_filters(' '.join(text))
@@ -649,10 +649,7 @@ class CharVectorizer(Vectorizer):
         progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             # In some rare cases, all the characters of a word have been
             # removed because of the filter characters. So the length of the
             # word is zero.
@@ -765,8 +762,9 @@ class WordVectorizer(Vectorizer):
         """
         super(WordVectorizer, self).__init__(num_words, filters, lower,
                                              oov_token, verbose)
-        self.word_tokenize = word_tokenize
-        self.words_stats = []
+        if word_tokenize is None:
+            self.word_tokenize = segment.word_tokenize
+        self.words_stats = dict()
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -782,10 +780,7 @@ class WordVectorizer(Vectorizer):
                 text = self._apply_filters(' '.join(text))
             else:
                 text = self._apply_filters(text)
-            if self.word_tokenize is not None:
-                tokens = self.word_tokenize(text)
-            else:
-                tokens = text.split()
+            tokens = self.word_tokenize(text)
             self.token_counts.update(tokens)
             progbar.update(i)
         progbar.update(len(texts))
@@ -819,10 +814,7 @@ class WordVectorizer(Vectorizer):
         for text in texts:
             _words = []
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             for word in words:
                 if word in self.token2id:
                     _words.append(self.token2id[word])
@@ -957,6 +949,8 @@ class SentCharVectorizer(CharVectorizer):
               self).__init__(word_tokenize, characters, num_chars, filters,
                              lower, oov_token, verbose)
         self.sent_tokenize = sent_tokenize
+        if word_tokenize is None:
+            self.word_tokenize = segment.word_tokenize
         self.sents_stats = None
         self.words_stats = None
         self.chars_stats = None
@@ -1036,10 +1030,7 @@ class SentCharVectorizer(CharVectorizer):
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
                 sent = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = sent.split()
-                else:
-                    words = self.word_tokenize(sent)
+                words = self.word_tokenize(sent)
                 if len(words) == 0:
                     _words = [[0]]  # The list of characters in a word.
                 else:
@@ -1247,10 +1238,7 @@ class SentWordVectorizer(WordVectorizer):
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
                 text = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = text.split()
-                else:
-                    words = self.word_tokenize(text)
+                words = self.word_tokenize(text)
                 _words = []
                 for word in words:
                     if word in self.token2id:

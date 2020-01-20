@@ -8,7 +8,7 @@ def sent_tokenize(
 ):
     """
     A simple sentence tokenizer based on regular expressions to find the
-    sentence bountaries.
+    sentence boundaries.
 
     Parameters
     ----------
@@ -32,6 +32,29 @@ def sent_tokenize(
     """
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
     return substitutions.split(subst)
+
+
+def word_tokenize(text):
+    """
+    A simple word tokenizer on white spaces.
+
+    Parameters
+    ----------
+    text : str
+        The text to tokenize
+
+    Returns
+    -------
+    list
+        A list with the words in the text. White spaces are trimmed.
+
+    Examples
+    --------
+    >>> sentence = 'A sentence   to be   tokenized'
+    >>> word_tokenize(sentence)
+    ['A', 'sentence', 'to', 'be', 'tokenized']
+    """
+    return text.split()
 
 
 class SentenceSplitter:
