@@ -34,27 +34,34 @@ def sent_tokenize(
     return substitutions.split(subst)
 
 
-def word_tokenize(text):
+def word_tokenize(text, regex="\W+|\t|\n"):
     """
-    A simple word tokenizer on white spaces.
+    A simple word tokenizer to tokenize text on the giver regular expression.
 
     Parameters
     ----------
     text : str
-        The text to tokenize
+        The text to tokenize.
+
+    regex : str
+        The regular expresion to use in order to split the `text`.
 
     Returns
     -------
     list
-        A list with the words in the text. White spaces are trimmed.
+        A list with the words in the text. Separators are trimmed.
 
     Examples
     --------
-    >>> sentence = 'A sentence   to be   tokenized'
+    >>> sentence = 'A    sentence\\tto\\nbe   tokenized\\n'
     >>> word_tokenize(sentence)
     ['A', 'sentence', 'to', 'be', 'tokenized']
     """
-    return text.split()
+    tokens = re.split(regex, text)
+    if len(tokens[-1]) == 0:
+        tokens.pop()
+
+    return tokens
 
 
 class SentenceSplitter:
