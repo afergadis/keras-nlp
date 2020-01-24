@@ -34,7 +34,7 @@ def sent_tokenize(
 ):
     &#34;&#34;&#34;
     A simple sentence tokenizer based on regular expressions to find the
-    sentence bountaries.
+    sentence boundaries.
 
     Parameters
     ----------
@@ -58,6 +58,36 @@ def sent_tokenize(
     &#34;&#34;&#34;
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
     return substitutions.split(subst)
+
+
+def word_tokenize(text, regex=&#34;\W+|\t|\n&#34;):
+    &#34;&#34;&#34;
+    A simple word tokenizer to tokenize text on the giver regular expression.
+
+    Parameters
+    ----------
+    text : str
+        The text to tokenize.
+
+    regex : str
+        The regular expresion to use in order to split the `text`.
+
+    Returns
+    -------
+    list
+        A list with the words in the text. Separators are trimmed.
+
+    Examples
+    --------
+    &gt;&gt;&gt; sentence = &#39;A    sentence\\tto\\nbe   tokenized\\n&#39;
+    &gt;&gt;&gt; word_tokenize(sentence)
+    [&#39;A&#39;, &#39;sentence&#39;, &#39;to&#39;, &#39;be&#39;, &#39;tokenized&#39;]
+    &#34;&#34;&#34;
+    tokens = re.split(regex, text)
+    if len(tokens[-1]) == 0:
+        tokens.pop()
+
+    return tokens
 
 
 class SentenceSplitter:
@@ -167,7 +197,7 @@ if __name__ == &#39;__main__&#39;:
 </code></dt>
 <dd>
 <section class="desc"><p>A simple sentence tokenizer based on regular expressions to find the
-sentence bountaries.</p>
+sentence boundaries.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
@@ -195,7 +225,7 @@ sentence bountaries.</p>
 ):
     &#34;&#34;&#34;
     A simple sentence tokenizer based on regular expressions to find the
-    sentence bountaries.
+    sentence boundaries.
 
     Parameters
     ----------
@@ -219,6 +249,62 @@ sentence bountaries.</p>
     &#34;&#34;&#34;
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
     return substitutions.split(subst)</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.preprocessing.segment.word_tokenize"><code class="name flex">
+<span>def <span class="ident">word_tokenize</span></span>(<span>text, regex='\\W+|\t|\n')</span>
+</code></dt>
+<dd>
+<section class="desc"><p>A simple word tokenizer to tokenize text on the giver regular expression.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
+<dd>The text to tokenize.</dd>
+<dt><strong><code>regex</code></strong> :&ensp;<code>str</code></dt>
+<dd>The regular expresion to use in order to split the <code>text</code>.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>list</code></dt>
+<dd>A list with the words in the text. Separators are trimmed.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code>&gt;&gt;&gt; sentence = 'A    sentence\tto\nbe   tokenized\n'
+&gt;&gt;&gt; word_tokenize(sentence)
+['A', 'sentence', 'to', 'be', 'tokenized']
+</code></pre></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def word_tokenize(text, regex=&#34;\W+|\t|\n&#34;):
+    &#34;&#34;&#34;
+    A simple word tokenizer to tokenize text on the giver regular expression.
+
+    Parameters
+    ----------
+    text : str
+        The text to tokenize.
+
+    regex : str
+        The regular expresion to use in order to split the `text`.
+
+    Returns
+    -------
+    list
+        A list with the words in the text. Separators are trimmed.
+
+    Examples
+    --------
+    &gt;&gt;&gt; sentence = &#39;A    sentence\\tto\\nbe   tokenized\\n&#39;
+    &gt;&gt;&gt; word_tokenize(sentence)
+    [&#39;A&#39;, &#39;sentence&#39;, &#39;to&#39;, &#39;be&#39;, &#39;tokenized&#39;]
+    &#34;&#34;&#34;
+    tokens = re.split(regex, text)
+    if len(tokens[-1]) == 0:
+        tokens.pop()
+
+    return tokens</code></pre>
 </details>
 </dd>
 </dl>
@@ -398,6 +484,7 @@ segmentation especially in scientific papers.</p>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="keras_nlp.preprocessing.segment.sent_tokenize" href="#keras_nlp.preprocessing.segment.sent_tokenize">sent_tokenize</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.segment.word_tokenize" href="#keras_nlp.preprocessing.segment.word_tokenize">word_tokenize</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>

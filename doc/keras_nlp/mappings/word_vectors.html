@@ -32,7 +32,7 @@ from keras.utils.generic_utils import Progbar
 from keras.layers import Embedding
 
 
-class WordVectors:
+class WordVectors(abc.ABC):
     &#34;&#34;&#34;
     A class to define common methods and functionality to load word vectors
     from different formats.
@@ -425,6 +425,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="keras_nlp.mappings.word_vectors.WordVectors" href="#keras_nlp.mappings.word_vectors.WordVectors">WordVectors</a></li>
+<li>abc.ABC</li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -614,6 +615,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="keras_nlp.mappings.word_vectors.WordVectors" href="#keras_nlp.mappings.word_vectors.WordVectors">WordVectors</a></li>
+<li>abc.ABC</li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -712,7 +714,7 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class WordVectors:
+<pre><code class="python">class WordVectors(abc.ABC):
     &#34;&#34;&#34;
     A class to define common methods and functionality to load word vectors
     from different formats.
@@ -865,6 +867,10 @@ create with uniform distribution in range [-0.05, 0.05].</dd>
         self.__dict__ = state
         self.__dict__[&#39;logger&#39;] = logging.getLogger(self.__class__.__name__)</code></pre>
 </details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
 <h3>Subclasses</h3>
 <ul class="hlist">
 <li><a title="keras_nlp.mappings.word_vectors.Glove" href="#keras_nlp.mappings.word_vectors.Glove">Glove</a></li>

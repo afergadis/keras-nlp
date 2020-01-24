@@ -30,6 +30,7 @@ import re
 import numpy as np
 from collections import Counter
 from keras.utils.generic_utils import Progbar
+from keras_nlp.preprocessing import segment
 
 
 def calc_stats(array):
@@ -68,6 +69,7 @@ class Vectorizer:
     &#34;&#34;&#34;
 
     def __init__(self,
+                 word_tokenize=None,
                  num_tokens=None,
                  filters=&#39;!&#34;#$%&amp;()*+,-./:;&lt;=&gt;?@[\\]^_`{|}~\t\n&#39;,
                  lower=True,
@@ -76,6 +78,12 @@ class Vectorizer:
         &#34;&#34;&#34;
         Parameters
         ----------
+        word_tokenize : callable or None, default None
+            If set, then the function should return a list of tokens (words)
+            for a given text. When `word_tokenize` is set to None,
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
+
         num_tokens : int or None, default None
             The maximum number of tokens in the vocabulary of the vectorizer.
             If is set to None, then all the tokens found using `fit_on_texts`
@@ -95,7 +103,8 @@ class Vectorizer:
         verbose : int in [0, 2], default 1
             The verbosity of the output during the vectorization methods.
         &#34;&#34;&#34;
-
+        if word_tokenize is None:
+            self.word_tokenize = segment.word_tokenize
         self.num_tokens = num_tokens
         if filters is not None:
             self.filters = &#39;[&#39; + re.escape(filters) + &#39;]&#39;
@@ -139,6 +148,11 @@ class Vectorizer:
                 self.token2id[token] = len(self.token2id)
             self.id2token = {v: k for k, v in self.token2id.items()}
         self.num_tokens = len(self.token2id)
+
+    def _init_vocab(self):
+        self.token2id = {&#39;_PAD_&#39;: 0}
+        if self.oov_token is not None:
+            self.token2id[self.oov_token] = 1
 
     @abc.abstractmethod
     def fit_on_texts(self, texts):
@@ -323,6 +337,21 @@ class Vectorizer:
             array = vectors
         return array
 
+    def _tokenize_text(self, text):
+        if isinstance(text, list):
+            _text = []
+            for sentence in text:
+                sentence = self._apply_filters(sentence)
+                words = self.word_tokenize(sentence)
+                _text.append(words)
+            tokenized_text = _text
+        else:
+            text = self._apply_filters(text)
+            words = self.word_tokenize(text)
+            tokenized_text = words
+
+        return tokenized_text
+
     def _tokens_to_chars(self, tokens):
         &#34;&#34;&#34;
         For each token create a list of it&#39;s character ids.
@@ -413,6 +442,7 @@ class Vectorizer:
         ----------
         vectors : ndarray
             The shape of `vectors` may be:
+
             * 2D `(num_of_texts, num_of_tokens)` from `WordVectorizer`;
             * 3D `(num_of_texts, num_of_sentences, num_of_words)` from
             `SentWordVectorizer`;
@@ -425,6 +455,7 @@ class Vectorizer:
         -------
         list
             The list has length of `num_of_texts`.
+
             * In case of 2D input, the list has the words of the texts.
             * In case of 3D input, the list has a list sentences. Each item of
             the nested list is a word in case of `SentWordVectorizer`,
@@ -450,8 +481,7 @@ class Vectorizer:
             raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
         self.logger.info(&#39;Converting vectors to texts.&#39;)
         texts = []
-        progbar = Progbar(
-            vectors.shape[0], interval=0.25, verbose=self.verbose)
+        progbar = Progbar(vectors.shape[0], verbose=self.verbose)
         if vectors.ndim == 2:
             for doc in vectors:
                 # Just to be able to update progress bar.
@@ -545,7 +575,8 @@ class CharVectorizer(Vectorizer):
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         characters : str, list or None, default None
             If set then only the characters defined will be in the vectrorizer&#39;s
@@ -584,45 +615,42 @@ class CharVectorizer(Vectorizer):
             A dictionary with statistics about the characters of the words.
             (min/max/std/mean/median/percentiles of characters among words).
         &#34;&#34;&#34;
-        super(CharVectorizer, self).__init__(num_chars, filters, lower,
-                                             oov_token, verbose)
-        self.word_tokenize = word_tokenize
+        super().__init__(word_tokenize, num_chars, filters, lower, oov_token,
+                         verbose)
         self.num_chars = num_chars
 
         if characters is None:
             self.characters = None
-        elif isinstance(characters, str):
-            self.characters = [c for c in characters]
-            self.fit_on_texts([])
         else:
-            self.characters = characters
-            self.fit_on_texts([])
+            self.characters = list(characters)
+            self.token_counts.update(self.characters)
 
-        self.words_stats = None
-        self.chars_stats = None
+        self.words_stats = dict()
+        self.chars_stats = dict()
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fit_on_texts(self, texts):
+        self._init_vocab()
         self.logger.info(&#39;Creating vocabulary.&#39;)
-        self.token2id = {&#39;_PAD_&#39;: 0}
-        if self.oov_token is not None:
-            self.token2id[self.oov_token] = 1
-        if self.characters is None:
-            progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
-            for i, text in enumerate(texts):
-                if isinstance(text, list):
-                    text = self._apply_filters(&#39; &#39;.join(text))
-                else:
-                    text = self._apply_filters(text)
-                chars = [c for c in text if c != &#39; &#39;]
+        progbar = Progbar(len(texts), verbose=self.verbose)
+        # Text length counting words and word length counting characters.
+        texts_len, words_len = [], []
+        for i, text in enumerate(texts):
+            tokens = self._tokenize_text(text)
+            texts_len.append(len(tokens))
+            words_len.extend([len(token) for token in tokens])
+            if self.characters is None:
+                chars = list(&#39;&#39;.join(tokens))
                 self.token_counts.update(chars)
-                progbar.update(i)
-            progbar.update(len(texts))  # Finalize
-        else:
-            self.token_counts.update(self.characters)
+            progbar.update(i)
+        progbar.update(len(texts))  # Finalize
+
         self._bag_of_tokens()
         self.num_chars = self.num_tokens
+
+        self.words_stats = calc_stats(texts_len)
+        self.chars_stats = calc_stats(words_len)
 
     def _pad_vectors(self,
                      sequences,
@@ -630,18 +658,13 @@ class CharVectorizer(Vectorizer):
                      padding=&#39;pre&#39;,
                      truncating=&#39;pre&#39;,
                      pad_value=0):
-        if len(shape) != 2:
-            raise ValueError(f&#39;The `shape` should be of rank 2 defining the&#39;
-                             f&#39;maximum words per text and the maximum &#39;
-                             f&#39;characters per word. Found a `shape` &#39;
-                             f&#39;with rank {len(shape)}.&#39;)
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
             fill_value=pad_value,
             dtype=int)
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i, doc in enumerate(sequences):
             chars_vector = self._pad_sequences(
                 doc,
@@ -672,13 +695,10 @@ class CharVectorizer(Vectorizer):
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             # In some rare cases, all the characters of a word have been
             # removed because of the filter characters. So the length of the
             # word is zero.
@@ -688,13 +708,6 @@ class CharVectorizer(Vectorizer):
                 _words = list(self._tokens_to_chars(words))
             _texts.append(_words)
             progbar.update(len(_texts))
-
-        # Calculate document length in words.
-        texts_len = [len(text) for text in _texts]
-        words_len = [len(word) for doc in _texts for word in doc]
-
-        self.words_stats = calc_stats(texts_len)
-        self.chars_stats = calc_stats(words_len)
 
         if shape is None:
             max_words = self.words_stats[&#39;max&#39;]
@@ -717,7 +730,10 @@ class CharVectorizer(Vectorizer):
         if self.token2id is None:
             msg = &#39;CharVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;CharVectorizer(Vocab Size: {})&#39;.format(len(self.token2id))
+            msg = &#39;CharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -756,7 +772,8 @@ class WordVectorizer(Vectorizer):
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         num_words : int or None, default None
             The maximum number of words in the vocabulary of the
@@ -789,33 +806,25 @@ class WordVectorizer(Vectorizer):
             A dictionary with statistics about the tokens (words) of the texts
             (min/max/std/mean/median/percentiles of words among texts).
         &#34;&#34;&#34;
-        super(WordVectorizer, self).__init__(num_words, filters, lower,
-                                             oov_token, verbose)
-        self.word_tokenize = word_tokenize
-        self.words_stats = []
-
+        super().__init__(word_tokenize, num_words, filters, lower, oov_token,
+                         verbose)
+        self.words_stats = dict()
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fit_on_texts(self, texts):
-        self.token2id = {&#39;_PAD_&#39;: 0}
-        if self.oov_token is not None:
-            self.token2id[self.oov_token] = 1
-
+        self._init_vocab()
         self.logger.info(&#39;Creating vocabulary.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
+        docs_len = []
         for i, text in enumerate(texts):
-            if isinstance(text, list):
-                text = self._apply_filters(&#39; &#39;.join(text))
-            else:
-                text = self._apply_filters(text)
-            if self.word_tokenize is not None:
-                tokens = self.word_tokenize(text)
-            else:
-                tokens = text.split()
+            tokens = self._tokenize_text(text)
+            docs_len.append(len(tokens))
             self.token_counts.update(tokens)
             progbar.update(i)
         progbar.update(len(texts))
+
         self._bag_of_tokens()
+        self.words_stats = calc_stats(docs_len)
 
     def _pad_vectors(self,
                      vectors,
@@ -841,14 +850,11 @@ class WordVectorizer(Vectorizer):
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _words = []
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             for word in words:
                 if word in self.token2id:
                     _words.append(self.token2id[word])
@@ -858,9 +864,6 @@ class WordVectorizer(Vectorizer):
             _texts.append(_words)
             progbar.update(len(_texts))
 
-        docs_len = [len(doc) for doc in _texts]
-        self.words_stats = calc_stats(docs_len)
-
         if shape is None:
             shape = (self.words_stats[&#39;max&#39;], )
 
@@ -869,7 +872,7 @@ class WordVectorizer(Vectorizer):
             shape[0],
             padding=padding,
             truncating=truncating,
-            pad_value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=pad_value)
         return vectors
 
     def stats(self):
@@ -879,7 +882,8 @@ class WordVectorizer(Vectorizer):
         if self.token2id is None:
             msg = &#39;WordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;&lt;WordVectorizer(Vocab Size: {})&#39;.format(len(self.token2id))
+            msg = &#39;&lt;WordVectorizer(Vocab Size: {}, Max Words: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -933,7 +937,8 @@ class SentCharVectorizer(CharVectorizer):
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         characters : str, list or None, default None
             If set then only the characters defined will be in the vectrorizer&#39;s
@@ -964,7 +969,7 @@ class SentCharVectorizer(CharVectorizer):
         num_tokens : int
             The number of tokens (characters) in the vocabulary.
 
-        num_words : int
+        num_chars : int
             Alias for the `num_tokens` attribute.
 
         sents_stats : dict
@@ -979,9 +984,8 @@ class SentCharVectorizer(CharVectorizer):
             A dictionary with statistics about the characters of the words.
             (min/max/std/mean/median/percentiles of characters among words).
         &#34;&#34;&#34;
-        super(SentCharVectorizer,
-              self).__init__(word_tokenize, characters, num_chars, filters,
-                             lower, oov_token, verbose)
+        super().__init__(word_tokenize, characters, num_chars, filters, lower,
+                         oov_token, verbose)
         self.sent_tokenize = sent_tokenize
         self.sents_stats = None
         self.words_stats = None
@@ -1005,7 +1009,7 @@ class SentCharVectorizer(CharVectorizer):
             dtype=int)
 
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             num_sentences = len(sequences[i])
             words_chars_vector = np.full(
@@ -1047,7 +1051,7 @@ class SentCharVectorizer(CharVectorizer):
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
             if self.sent_tokenize is None:
@@ -1061,11 +1065,7 @@ class SentCharVectorizer(CharVectorizer):
             else:
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
-                sent = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = sent.split()
-                else:
-                    words = self.word_tokenize(sent)
+                words = self._tokenize_text(sentence)
                 if len(words) == 0:
                     _words = [[0]]  # The list of characters in a word.
                 else:
@@ -1110,8 +1110,10 @@ class SentCharVectorizer(CharVectorizer):
         if self.token2id is None:
             msg = &#39;SentCharVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentCharVectorizer(Vocab size: {})&#39;.format(
-                len(self.token2id))
+            msg = &#39;SentCharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -1162,7 +1164,8 @@ class SentWordVectorizer(WordVectorizer):
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         num_words : int or None, default None
             The maximum number of characters in the vocabulary of the
@@ -1207,9 +1210,9 @@ class SentWordVectorizer(WordVectorizer):
             word_tokenize, num_words, filters, lower, oov_token, verbose)
         self.sent_tokenize = sent_tokenize
 
-        self.sents_stats = []
-        self.words_stats = []
-        self.chars_stats = []
+        self.sents_stats = dict()
+        self.words_stats = dict()
+        self.chars_stats = dict()
 
     def _pad_vectors(self,
                      sequences,
@@ -1222,7 +1225,7 @@ class SentWordVectorizer(WordVectorizer):
             shape=(len(sequences), max_sentences, max_words),
             fill_value=self.token2id[&#39;_PAD_&#39;])
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             words_vector = self._pad_sequences(
                 sequences[i],
@@ -1258,7 +1261,7 @@ class SentWordVectorizer(WordVectorizer):
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
             if self.sent_tokenize is None:
@@ -1272,11 +1275,7 @@ class SentWordVectorizer(WordVectorizer):
             else:
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
-                text = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = text.split()
-                else:
-                    words = self.word_tokenize(text)
+                words = self._tokenize_text(sentence)
                 _words = []
                 for word in words:
                     if word in self.token2id:
@@ -1318,8 +1317,10 @@ class SentWordVectorizer(WordVectorizer):
         if self.token2id is None:
             msg = &#39;SentWordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentWordVectorizer(Vocab Size: {})&#39;.format(
-                len(self.token2id))
+            msg = &#39;SentWordVectorizer(Vocab Size: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -1420,7 +1421,8 @@ represented with a list of <code>max_characters</code> ids.</p>
 <dt><strong><code>word_tokenize</code></strong> :&ensp;<code>callable</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set, then the function should return a list of tokens (words)
 for a given text. When <code>word_tokenize</code> is set to None,
-the <code>split()</code> method is used for tokenization.</dd>
+the <code>keras_nlp.segment.word_tokenize()</code> method is used that split
+text on white spaces, tabs and new line characters.</dd>
 <dt><strong><code>characters</code></strong> :&ensp;<code>str</code>, <code>list</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set then only the characters defined will be in the vectrorizer's
 vocabulary. Otherwise, the characters found in the texts during
@@ -1500,7 +1502,8 @@ represents an out of vocabulary token.</dd>
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         characters : str, list or None, default None
             If set then only the characters defined will be in the vectrorizer&#39;s
@@ -1539,45 +1542,42 @@ represents an out of vocabulary token.</dd>
             A dictionary with statistics about the characters of the words.
             (min/max/std/mean/median/percentiles of characters among words).
         &#34;&#34;&#34;
-        super(CharVectorizer, self).__init__(num_chars, filters, lower,
-                                             oov_token, verbose)
-        self.word_tokenize = word_tokenize
+        super().__init__(word_tokenize, num_chars, filters, lower, oov_token,
+                         verbose)
         self.num_chars = num_chars
 
         if characters is None:
             self.characters = None
-        elif isinstance(characters, str):
-            self.characters = [c for c in characters]
-            self.fit_on_texts([])
         else:
-            self.characters = characters
-            self.fit_on_texts([])
+            self.characters = list(characters)
+            self.token_counts.update(self.characters)
 
-        self.words_stats = None
-        self.chars_stats = None
+        self.words_stats = dict()
+        self.chars_stats = dict()
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fit_on_texts(self, texts):
+        self._init_vocab()
         self.logger.info(&#39;Creating vocabulary.&#39;)
-        self.token2id = {&#39;_PAD_&#39;: 0}
-        if self.oov_token is not None:
-            self.token2id[self.oov_token] = 1
-        if self.characters is None:
-            progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
-            for i, text in enumerate(texts):
-                if isinstance(text, list):
-                    text = self._apply_filters(&#39; &#39;.join(text))
-                else:
-                    text = self._apply_filters(text)
-                chars = [c for c in text if c != &#39; &#39;]
+        progbar = Progbar(len(texts), verbose=self.verbose)
+        # Text length counting words and word length counting characters.
+        texts_len, words_len = [], []
+        for i, text in enumerate(texts):
+            tokens = self._tokenize_text(text)
+            texts_len.append(len(tokens))
+            words_len.extend([len(token) for token in tokens])
+            if self.characters is None:
+                chars = list(&#39;&#39;.join(tokens))
                 self.token_counts.update(chars)
-                progbar.update(i)
-            progbar.update(len(texts))  # Finalize
-        else:
-            self.token_counts.update(self.characters)
+            progbar.update(i)
+        progbar.update(len(texts))  # Finalize
+
         self._bag_of_tokens()
         self.num_chars = self.num_tokens
+
+        self.words_stats = calc_stats(texts_len)
+        self.chars_stats = calc_stats(words_len)
 
     def _pad_vectors(self,
                      sequences,
@@ -1585,18 +1585,13 @@ represents an out of vocabulary token.</dd>
                      padding=&#39;pre&#39;,
                      truncating=&#39;pre&#39;,
                      pad_value=0):
-        if len(shape) != 2:
-            raise ValueError(f&#39;The `shape` should be of rank 2 defining the&#39;
-                             f&#39;maximum words per text and the maximum &#39;
-                             f&#39;characters per word. Found a `shape` &#39;
-                             f&#39;with rank {len(shape)}.&#39;)
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
             fill_value=pad_value,
             dtype=int)
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i, doc in enumerate(sequences):
             chars_vector = self._pad_sequences(
                 doc,
@@ -1627,13 +1622,10 @@ represents an out of vocabulary token.</dd>
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             # In some rare cases, all the characters of a word have been
             # removed because of the filter characters. So the length of the
             # word is zero.
@@ -1643,13 +1635,6 @@ represents an out of vocabulary token.</dd>
                 _words = list(self._tokens_to_chars(words))
             _texts.append(_words)
             progbar.update(len(_texts))
-
-        # Calculate document length in words.
-        texts_len = [len(text) for text in _texts]
-        words_len = [len(word) for doc in _texts for word in doc]
-
-        self.words_stats = calc_stats(texts_len)
-        self.chars_stats = calc_stats(words_len)
 
         if shape is None:
             max_words = self.words_stats[&#39;max&#39;]
@@ -1672,7 +1657,10 @@ represents an out of vocabulary token.</dd>
         if self.token2id is None:
             msg = &#39;CharVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;CharVectorizer(Vocab Size: {})&#39;.format(len(self.token2id))
+            msg = &#39;CharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -1734,7 +1722,8 @@ be a list of sentences.</dd>
 <dt><strong><code>word_tokenize</code></strong> :&ensp;<code>callable</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set, then the function should return a list of tokens (words)
 for a given text. When <code>word_tokenize</code> is set to None,
-the <code>split()</code> method is used for tokenization.</dd>
+the <code>keras_nlp.segment.word_tokenize()</code> method is used that split
+text on white spaces, tabs and new line characters.</dd>
 <dt><strong><code>characters</code></strong> :&ensp;<code>str</code>, <code>list</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set then only the characters defined will be in the vectrorizer's
 vocabulary. Otherwise, the characters found in the texts during
@@ -1758,7 +1747,7 @@ represents an out of vocabulary token.</dd>
 <dl>
 <dt><strong><code>num_tokens</code></strong> :&ensp;<code>int</code></dt>
 <dd>The number of tokens (characters) in the vocabulary.</dd>
-<dt><strong><code>num_words</code></strong> :&ensp;<code>int</code></dt>
+<dt><strong><code>num_chars</code></strong> :&ensp;<code>int</code></dt>
 <dd>Alias for the <code>num_tokens</code> attribute.</dd>
 <dt><strong><code>sents_stats</code></strong> :&ensp;<code>dict</code></dt>
 <dd>A dictionary with statistics about the sentences of the texts.
@@ -1821,7 +1810,8 @@ represents an out of vocabulary token.</dd>
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         characters : str, list or None, default None
             If set then only the characters defined will be in the vectrorizer&#39;s
@@ -1852,7 +1842,7 @@ represents an out of vocabulary token.</dd>
         num_tokens : int
             The number of tokens (characters) in the vocabulary.
 
-        num_words : int
+        num_chars : int
             Alias for the `num_tokens` attribute.
 
         sents_stats : dict
@@ -1867,9 +1857,8 @@ represents an out of vocabulary token.</dd>
             A dictionary with statistics about the characters of the words.
             (min/max/std/mean/median/percentiles of characters among words).
         &#34;&#34;&#34;
-        super(SentCharVectorizer,
-              self).__init__(word_tokenize, characters, num_chars, filters,
-                             lower, oov_token, verbose)
+        super().__init__(word_tokenize, characters, num_chars, filters, lower,
+                         oov_token, verbose)
         self.sent_tokenize = sent_tokenize
         self.sents_stats = None
         self.words_stats = None
@@ -1893,7 +1882,7 @@ represents an out of vocabulary token.</dd>
             dtype=int)
 
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             num_sentences = len(sequences[i])
             words_chars_vector = np.full(
@@ -1935,7 +1924,7 @@ represents an out of vocabulary token.</dd>
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
             if self.sent_tokenize is None:
@@ -1949,11 +1938,7 @@ represents an out of vocabulary token.</dd>
             else:
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
-                sent = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = sent.split()
-                else:
-                    words = self.word_tokenize(sent)
+                words = self._tokenize_text(sentence)
                 if len(words) == 0:
                     _words = [[0]]  # The list of characters in a word.
                 else:
@@ -1998,8 +1983,10 @@ represents an out of vocabulary token.</dd>
         if self.token2id is None:
             msg = &#39;SentCharVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentCharVectorizer(Vocab size: {})&#39;.format(
-                len(self.token2id))
+            msg = &#39;SentCharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -2053,7 +2040,8 @@ be a list of sentences.</dd>
 <dt><strong><code>word_tokenize</code></strong> :&ensp;<code>callable</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set, then the function should return a list of tokens (words)
 for a given text. When <code>word_tokenize</code> is set to None,
-the <code>split()</code> method is used for tokenization.</dd>
+the <code>keras_nlp.segment.word_tokenize()</code> method is used that split
+text on white spaces, tabs and new line characters.</dd>
 <dt><strong><code>num_words</code></strong> :&ensp;<code>int</code> or <code>None</code>, default <code>None</code></dt>
 <dd>The maximum number of characters in the vocabulary of the
 vectorizer. If is set to None, then all the characters found using
@@ -2133,7 +2121,8 @@ represents an out of vocabulary token.</dd>
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         num_words : int or None, default None
             The maximum number of characters in the vocabulary of the
@@ -2178,9 +2167,9 @@ represents an out of vocabulary token.</dd>
             word_tokenize, num_words, filters, lower, oov_token, verbose)
         self.sent_tokenize = sent_tokenize
 
-        self.sents_stats = []
-        self.words_stats = []
-        self.chars_stats = []
+        self.sents_stats = dict()
+        self.words_stats = dict()
+        self.chars_stats = dict()
 
     def _pad_vectors(self,
                      sequences,
@@ -2193,7 +2182,7 @@ represents an out of vocabulary token.</dd>
             shape=(len(sequences), max_sentences, max_words),
             fill_value=self.token2id[&#39;_PAD_&#39;])
         self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
-        progbar = Progbar(len(sequences), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             words_vector = self._pad_sequences(
                 sequences[i],
@@ -2229,7 +2218,7 @@ represents an out of vocabulary token.</dd>
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
             if self.sent_tokenize is None:
@@ -2243,11 +2232,7 @@ represents an out of vocabulary token.</dd>
             else:
                 sentences = self.sent_tokenize(text)
             for sentence in sentences:
-                text = self._apply_filters(sentence)
-                if self.word_tokenize is None:
-                    words = text.split()
-                else:
-                    words = self.word_tokenize(text)
+                words = self._tokenize_text(sentence)
                 _words = []
                 for word in words:
                     if word in self.token2id:
@@ -2289,8 +2274,10 @@ represents an out of vocabulary token.</dd>
         if self.token2id is None:
             msg = &#39;SentWordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentWordVectorizer(Vocab Size: {})&#39;.format(
-                len(self.token2id))
+            msg = &#39;SentWordVectorizer(Vocab Size: {}, &#39; \
+                  &#39;Max Characters: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;],
+                self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -2315,12 +2302,17 @@ represents an out of vocabulary token.</dd>
 </dd>
 <dt id="keras_nlp.preprocessing.text.Vectorizer"><code class="flex name class">
 <span>class <span class="ident">Vectorizer</span></span>
-<span>(</span><span>num_tokens=None, filters=&#x27;!&quot;#$%&amp;()*+,-./:;&lt;=&gt;?@[\\]^_`{|}~\t\n&#x27;, lower=True, oov_token=None, verbose=1)</span>
+<span>(</span><span>word_tokenize=None, num_tokens=None, filters=&#x27;!&quot;#$%&amp;()*+,-./:;&lt;=&gt;?@[\\]^_`{|}~\t\n&#x27;, lower=True, oov_token=None, verbose=1)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>An abstract base class for different types of Vectorizers.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
+<dt><strong><code>word_tokenize</code></strong> :&ensp;<code>callable</code> or <code>None</code>, default <code>None</code></dt>
+<dd>If set, then the function should return a list of tokens (words)
+for a given text. When <code>word_tokenize</code> is set to None,
+the <code>keras_nlp.segment.word_tokenize()</code> method is used that split
+text on white spaces, tabs and new line characters.</dd>
 <dt><strong><code>num_tokens</code></strong> :&ensp;<code>int</code> or <code>None</code>, default <code>None</code></dt>
 <dd>The maximum number of tokens in the vocabulary of the vectorizer.
 If is set to None, then all the tokens found using <code>fit_on_texts</code>
@@ -2346,6 +2338,7 @@ represents an out of vocabulary token.</dd>
     &#34;&#34;&#34;
 
     def __init__(self,
+                 word_tokenize=None,
                  num_tokens=None,
                  filters=&#39;!&#34;#$%&amp;()*+,-./:;&lt;=&gt;?@[\\]^_`{|}~\t\n&#39;,
                  lower=True,
@@ -2354,6 +2347,12 @@ represents an out of vocabulary token.</dd>
         &#34;&#34;&#34;
         Parameters
         ----------
+        word_tokenize : callable or None, default None
+            If set, then the function should return a list of tokens (words)
+            for a given text. When `word_tokenize` is set to None,
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
+
         num_tokens : int or None, default None
             The maximum number of tokens in the vocabulary of the vectorizer.
             If is set to None, then all the tokens found using `fit_on_texts`
@@ -2373,7 +2372,8 @@ represents an out of vocabulary token.</dd>
         verbose : int in [0, 2], default 1
             The verbosity of the output during the vectorization methods.
         &#34;&#34;&#34;
-
+        if word_tokenize is None:
+            self.word_tokenize = segment.word_tokenize
         self.num_tokens = num_tokens
         if filters is not None:
             self.filters = &#39;[&#39; + re.escape(filters) + &#39;]&#39;
@@ -2417,6 +2417,11 @@ represents an out of vocabulary token.</dd>
                 self.token2id[token] = len(self.token2id)
             self.id2token = {v: k for k, v in self.token2id.items()}
         self.num_tokens = len(self.token2id)
+
+    def _init_vocab(self):
+        self.token2id = {&#39;_PAD_&#39;: 0}
+        if self.oov_token is not None:
+            self.token2id[self.oov_token] = 1
 
     @abc.abstractmethod
     def fit_on_texts(self, texts):
@@ -2601,6 +2606,21 @@ represents an out of vocabulary token.</dd>
             array = vectors
         return array
 
+    def _tokenize_text(self, text):
+        if isinstance(text, list):
+            _text = []
+            for sentence in text:
+                sentence = self._apply_filters(sentence)
+                words = self.word_tokenize(sentence)
+                _text.append(words)
+            tokenized_text = _text
+        else:
+            text = self._apply_filters(text)
+            words = self.word_tokenize(text)
+            tokenized_text = words
+
+        return tokenized_text
+
     def _tokens_to_chars(self, tokens):
         &#34;&#34;&#34;
         For each token create a list of it&#39;s character ids.
@@ -2691,6 +2711,7 @@ represents an out of vocabulary token.</dd>
         ----------
         vectors : ndarray
             The shape of `vectors` may be:
+
             * 2D `(num_of_texts, num_of_tokens)` from `WordVectorizer`;
             * 3D `(num_of_texts, num_of_sentences, num_of_words)` from
             `SentWordVectorizer`;
@@ -2703,6 +2724,7 @@ represents an out of vocabulary token.</dd>
         -------
         list
             The list has length of `num_of_texts`.
+
             * In case of 2D input, the list has the words of the texts.
             * In case of 3D input, the list has a list sentences. Each item of
             the nested list is a word in case of `SentWordVectorizer`,
@@ -2728,8 +2750,7 @@ represents an out of vocabulary token.</dd>
             raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
         self.logger.info(&#39;Converting vectors to texts.&#39;)
         texts = []
-        progbar = Progbar(
-            vectors.shape[0], interval=0.25, verbose=self.verbose)
+        progbar = Progbar(vectors.shape[0], verbose=self.verbose)
         if vectors.ndim == 2:
             for doc in vectors:
                 # Just to be able to update progress bar.
@@ -2963,27 +2984,35 @@ def texts_to_vectors(self,
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>vectors</code></strong> :&ensp;<code>ndarray</code></dt>
-<dd>The shape of <code>vectors</code> may be:
-* 2D <code>(num_of_texts, num_of_tokens)</code> from <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a>;
-* 3D <code>(num_of_texts, num_of_sentences, num_of_words)</code> from
-<a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a>;
-* 3D <code>(num_of_texts, num_of_words, num_of_characters)</code> from
+<dd>
+<p>The shape of <code>vectors</code> may be:</p>
+<ul>
+<li>2D <code>(num_of_texts, num_of_tokens)</code> from <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a>;</li>
+<li>3D <code>(num_of_texts, num_of_sentences, num_of_words)</code> from
+<a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a>;</li>
+<li>3D <code>(num_of_texts, num_of_words, num_of_characters)</code> from
 <a title="keras_nlp.preprocessing.text.CharVectorizer" href="#keras_nlp.preprocessing.text.CharVectorizer"><code>CharVectorizer</code></a>;
 a 4D <code>(num_of_texts, num_of_sentences, num_of_words,
-num_of_characters)</code> from <a title="keras_nlp.preprocessing.text.SentCharVectorizer" href="#keras_nlp.preprocessing.text.SentCharVectorizer"><code>SentCharVectorizer</code></a>.</dd>
+num_of_characters)</code> from <a title="keras_nlp.preprocessing.text.SentCharVectorizer" href="#keras_nlp.preprocessing.text.SentCharVectorizer"><code>SentCharVectorizer</code></a>.</li>
+</ul>
+</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
 <dt><code>list</code></dt>
-<dd>The list has length of <code>num_of_texts</code>.
-* In case of 2D input, the list has the words of the texts.
-* In case of 3D input, the list has a list sentences. Each item of
+<dd>
+<p>The list has length of <code>num_of_texts</code>.</p>
+<ul>
+<li>In case of 2D input, the list has the words of the texts.</li>
+<li>In case of 3D input, the list has a list sentences. Each item of
 the nested list is a word in case of <a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a>,
 or the list has a list of words. Each item of the word's list is
-the characters of the words.
-* In case of 4D input, the output is a list of texts with their list
+the characters of the words.</li>
+<li>In case of 4D input, the output is a list of texts with their list
 of sentences. For each sentence a list of tokens where each token
-is a list of its characters.</dd>
+is a list of its characters.</li>
+</ul>
+</dd>
 </dl></section>
 <details class="source">
 <summary>
@@ -2997,6 +3026,7 @@ is a list of its characters.</dd>
     ----------
     vectors : ndarray
         The shape of `vectors` may be:
+
         * 2D `(num_of_texts, num_of_tokens)` from `WordVectorizer`;
         * 3D `(num_of_texts, num_of_sentences, num_of_words)` from
         `SentWordVectorizer`;
@@ -3009,6 +3039,7 @@ is a list of its characters.</dd>
     -------
     list
         The list has length of `num_of_texts`.
+
         * In case of 2D input, the list has the words of the texts.
         * In case of 3D input, the list has a list sentences. Each item of
         the nested list is a word in case of `SentWordVectorizer`,
@@ -3034,8 +3065,7 @@ is a list of its characters.</dd>
         raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
     self.logger.info(&#39;Converting vectors to texts.&#39;)
     texts = []
-    progbar = Progbar(
-        vectors.shape[0], interval=0.25, verbose=self.verbose)
+    progbar = Progbar(vectors.shape[0], verbose=self.verbose)
     if vectors.ndim == 2:
         for doc in vectors:
             # Just to be able to update progress bar.
@@ -3088,7 +3118,8 @@ max_words)</code>.</p>
 <dt><strong><code>word_tokenize</code></strong> :&ensp;<code>callable</code> or <code>None</code>, default <code>None</code></dt>
 <dd>If set, then the function should return a list of tokens (words)
 for a given text. When <code>word_tokenize</code> is set to None,
-the <code>split()</code> method is used for tokenization.</dd>
+the <code>keras_nlp.segment.word_tokenize()</code> method is used that split
+text on white spaces, tabs and new line characters.</dd>
 <dt><strong><code>num_words</code></strong> :&ensp;<code>int</code> or <code>None</code>, default <code>None</code></dt>
 <dd>The maximum number of words in the vocabulary of the
 vectorizer. If is set to None, then all the words found using
@@ -3150,7 +3181,8 @@ represents an out of vocabulary token.</dd>
         word_tokenize : callable or None, default None
             If set, then the function should return a list of tokens (words)
             for a given text. When `word_tokenize` is set to None,
-            the `split()` method is used for tokenization.
+            the `keras_nlp.segment.word_tokenize()` method is used that split
+            text on white spaces, tabs and new line characters.
 
         num_words : int or None, default None
             The maximum number of words in the vocabulary of the
@@ -3183,33 +3215,25 @@ represents an out of vocabulary token.</dd>
             A dictionary with statistics about the tokens (words) of the texts
             (min/max/std/mean/median/percentiles of words among texts).
         &#34;&#34;&#34;
-        super(WordVectorizer, self).__init__(num_words, filters, lower,
-                                             oov_token, verbose)
-        self.word_tokenize = word_tokenize
-        self.words_stats = []
-
+        super().__init__(word_tokenize, num_words, filters, lower, oov_token,
+                         verbose)
+        self.words_stats = dict()
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def fit_on_texts(self, texts):
-        self.token2id = {&#39;_PAD_&#39;: 0}
-        if self.oov_token is not None:
-            self.token2id[self.oov_token] = 1
-
+        self._init_vocab()
         self.logger.info(&#39;Creating vocabulary.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
+        docs_len = []
         for i, text in enumerate(texts):
-            if isinstance(text, list):
-                text = self._apply_filters(&#39; &#39;.join(text))
-            else:
-                text = self._apply_filters(text)
-            if self.word_tokenize is not None:
-                tokens = self.word_tokenize(text)
-            else:
-                tokens = text.split()
+            tokens = self._tokenize_text(text)
+            docs_len.append(len(tokens))
             self.token_counts.update(tokens)
             progbar.update(i)
         progbar.update(len(texts))
+
         self._bag_of_tokens()
+        self.words_stats = calc_stats(docs_len)
 
     def _pad_vectors(self,
                      vectors,
@@ -3235,14 +3259,11 @@ represents an out of vocabulary token.</dd>
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
         self.logger.info(&#39;Converting texts to vectors.&#39;)
-        progbar = Progbar(len(texts), interval=0.25, verbose=self.verbose)
+        progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _words = []
             text = self._apply_filters(text)
-            if self.word_tokenize is None:
-                words = text.split()
-            else:
-                words = self.word_tokenize(text)
+            words = self.word_tokenize(text)
             for word in words:
                 if word in self.token2id:
                     _words.append(self.token2id[word])
@@ -3252,9 +3273,6 @@ represents an out of vocabulary token.</dd>
             _texts.append(_words)
             progbar.update(len(_texts))
 
-        docs_len = [len(doc) for doc in _texts]
-        self.words_stats = calc_stats(docs_len)
-
         if shape is None:
             shape = (self.words_stats[&#39;max&#39;], )
 
@@ -3263,7 +3281,7 @@ represents an out of vocabulary token.</dd>
             shape[0],
             padding=padding,
             truncating=truncating,
-            pad_value=self.token2id[&#39;_PAD_&#39;])
+            pad_value=pad_value)
         return vectors
 
     def stats(self):
@@ -3273,7 +3291,8 @@ represents an out of vocabulary token.</dd>
         if self.token2id is None:
             msg = &#39;WordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;&lt;WordVectorizer(Vocab Size: {})&#39;.format(len(self.token2id))
+            msg = &#39;&lt;WordVectorizer(Vocab Size: {}, Max Words: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
