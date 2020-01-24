@@ -8,7 +8,7 @@ setup(
     author='Aris Fergadis',
     author_email='aris.fergadis@protonmail.com',
     description='Library for NLP processing for Keras models.',
-    install_requires=['scikit-learn', 'numpy', 'keras'],
+    install_requires=['scikit-learn', 'numpy', 'keras', 'tensorflow<2.0'],
     packages=find_packages(),
     test_suite='keras_nlp.tests',
 )
