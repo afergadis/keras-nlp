@@ -6,7 +6,7 @@ from keras.utils.generic_utils import Progbar
 from keras.layers import Embedding
 
 
-class WordVectors:
+class WordVectors(abc.ABC):
     """
     A class to define common methods and functionality to load word vectors
     from different formats.
