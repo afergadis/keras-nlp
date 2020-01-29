@@ -17,7 +17,7 @@ def load_data(data_dir):
         dir_name = os.path.join(data_dir, label_type)
         for fname in os.listdir(dir_name):
             if fname[-4:] == '.txt':
-                f = open(os.path.join(dir_name, fname))
+                f = open(os.path.join(dir_name, fname), encoding='cp437')
                 texts.append(f.read())
                 f.close()
                 labels.append(label_type)
