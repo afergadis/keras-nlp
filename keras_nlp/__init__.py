@@ -7,5 +7,5 @@ from keras_nlp.mappings import Glove, W2V
 
 logging.basicConfig(
     level=logging.INFO,
-    datefmt='%y-%b-%d %H:%M:%S',
+    datefmt='%Y-%b-%d %H:%M:%S',
     format='%(asctime)s [%(levelname)-8s:%(name)-12s] - %(message)s')
