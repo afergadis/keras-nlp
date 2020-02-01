@@ -230,7 +230,10 @@ class Vectorizer:
                         raise ValueError('`truncating` should sum to 1.')
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
-                    array[idx, :] = seq[:pre] + seq[-post:]
+                    if post == 0:
+                        array[idx, :] = seq[:pre]
+                    else:
+                        array[idx, :] = seq[:pre] + seq[-post:]
         return array
 
     @staticmethod
