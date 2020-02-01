@@ -317,7 +317,7 @@ class Vectorizer:
             for sentence in text:
                 sentence = self._apply_filters(sentence)
                 words = self.word_tokenize(sentence)
-                _text.append(words)
+                _text.extend(words)
             tokenized_text = _text
         else:
             text = self._apply_filters(text)
