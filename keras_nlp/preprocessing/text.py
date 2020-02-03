@@ -147,7 +147,7 @@ class Vectorizer:
                      vectors,
                      shape,
                      padding='pre',
-                     truncating='pre',
+                     truncating=(0, 1),
                      pad_value=0):
         """
         Pad vectors to 2D or 3D arrays.
@@ -197,7 +197,7 @@ class Vectorizer:
     def _pad_sequences(sequences,
                        maxlen,
                        padding='pre',
-                       truncating='pre',
+                       truncating=(0, 1),
                        pad_value=0):
         array = np.full(shape=(len(sequences), maxlen), fill_value=pad_value)
         for idx, seq in enumerate(sequences):
@@ -240,7 +240,7 @@ class Vectorizer:
     def _reshape(vectors,
                  num_rows,
                  padding='pre',
-                 truncating='pre',
+                 truncating=(0, 1),
                  pad_value=0):
         """
         Reshape `vectors` to `(num_rows, vectors.shape[1:])`.
@@ -403,13 +403,90 @@ class Vectorizer:
 
         Returns
         -------
-        ndarray : Numpy 2D array with shape `shape`
+        ndarray : Numpy array with shape `shape`
 
         Raises
         ------
-        ValueError : `shape` len is not 2 and `shape` is not None.
+        ValueError : `shape` doesn't have the expected rank.
         """
         raise NotImplementedError()
+
+    def texts_to_vectors_generator(self,
+                                   texts,
+                                   labels,
+                                   shape=None,
+                                   padding='pre',
+                                   truncating=(0, 1),
+                                   pad_value=None,
+                                   batch_size=32):
+        """ Creates a generator iterator to use with the `fit_generator` of a
+        Keras Model object.
+
+        * A `WordVectorizer` will return a 2D array of shape `(len(texts),
+        max_tokens)`.
+        * A `CharVectorizer` will return a 3D array of shape `(len(texts),
+        max_tokens, max_characters)`.
+        * A `SentWordVectorizer` will return a 3D array of shape `(len(texts),
+        max_sentences, max_tokens)`.
+        * A `SentCharVectorizer` will return a 4D array of shape `(len(texts),
+        max_sentences, max_tokens, max_characters)`.
+
+        Parameters
+        ----------
+        texts : list
+            The list of texts to convert. Each item represents a document.
+
+        labels : list
+            The labels that accompany the texts.
+
+        shape : tuple, list or None, default None
+            * In case of `WordVectorizer` the shape defines the tuple
+            `(max_tokens, )` per text.
+            * In case of `CharVectorizer` the shape defines the tuple `(
+            max_tokens, max_characters)`.
+            * In case of `SentWordVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens)`.
+            * In case of `SentCharVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens, max_characters)`.
+
+        padding : str, options {'pre', 'post'}, default 'pre'
+            Defines the padding method when the length of tokens/characters
+            is less than `max_tokens`/`max_characters`. The filling value is
+            the value of the `pad_value` parameter.
+
+        truncating : str, options {'pre', 'post'}, default `(0, 1)`.
+            Defines the cutting method when  the length of tokens/characters
+            is larger than `max_tokens/characters`.
+
+        pad_value : int, default None
+            The value to use when padding is needed. If the value is `None`
+            then the `token2id['_PAD_']` value is used which by default is 0.
+
+        Returns
+        -------
+        ndarray : Numpy array with shape `shape`
+
+        Raises
+        ------
+        ValueError : `shape` doesn't have the expected rank.
+        """
+        n_samples = len(texts)
+        n_batches = n_samples // batch_size
+        if n_samples % batch_size:
+            n_batches += 1
+
+        self.verbose = 0
+        while True:
+            for i in range(n_batches):
+                start_idx = i * batch_size
+                end_idx = (i + 1) * batch_size
+                if end_idx > n_samples:
+                    end_idx = n_samples
+                x_batch = self.texts_to_vectors(texts[start_idx:end_idx],
+                                                shape, padding, truncating,
+                                                pad_value)
+                y_batch = labels[start_idx:end_idx]
+                yield x_batch, y_batch
 
     def vectors_to_texts(self, vectors):
         """
@@ -456,7 +533,8 @@ class Vectorizer:
 
         if self.id2token is None:
             raise ValueError('Please use `fit_on_texts` method first.')
-        self.logger.info('Converting vectors to texts.')
+        if self.verbose:
+            self.logger.info('Converting vectors to texts.')
         texts = []
         progbar = Progbar(vectors.shape[0], verbose=self.verbose)
         if vectors.ndim == 2:
@@ -609,7 +687,8 @@ class CharVectorizer(Vectorizer):
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info('Creating vocabulary.')
+        if self.verbose:
+            self.logger.info('Creating vocabulary.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         # Text length counting words and word length counting characters.
         texts_len, words_len = [], []
@@ -633,14 +712,15 @@ class CharVectorizer(Vectorizer):
                      sequences,
                      shape,
                      padding='pre',
-                     truncating='pre',
+                     truncating=(0, 1),
                      pad_value=0):
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
             fill_value=pad_value,
             dtype=int)
-        self.logger.info(f'Reshaping vectors to shape {shape}.')
+        if self.verbose:
+            self.logger.info(f'Reshaping vectors to shape {shape}.')
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i, doc in enumerate(sequences):
             chars_vector = self._pad_sequences(
@@ -659,7 +739,7 @@ class CharVectorizer(Vectorizer):
                          texts: list,
                          shape=None,
                          padding='pre',
-                         truncating='pre',
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -671,7 +751,8 @@ class CharVectorizer(Vectorizer):
         if pad_value is None:
             pad_value = self.token2id['_PAD_']
         _texts = []
-        self.logger.info('Converting texts to vectors.')
+        if self.verbose:
+            self.logger.info('Converting texts to vectors.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
@@ -790,7 +871,8 @@ class WordVectorizer(Vectorizer):
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info('Creating vocabulary.')
+        if self.verbose:
+            self.logger.info('Creating vocabulary.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         docs_len = []
         for i, text in enumerate(texts):
@@ -807,7 +889,7 @@ class WordVectorizer(Vectorizer):
                      vectors,
                      shape,
                      padding='pre',
-                     truncating='pre',
+                     truncating=(0, 1),
                      pad_value=0):
         pass
 
@@ -815,7 +897,7 @@ class WordVectorizer(Vectorizer):
                          texts: list,
                          shape=None,
                          padding='pre',
-                         truncating='pre',
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 1:
@@ -826,7 +908,8 @@ class WordVectorizer(Vectorizer):
         if pad_value is None:
             pad_value = self.token2id['_PAD_']
         _texts = []
-        self.logger.info('Converting texts to vectors.')
+        if self.verbose:
+            self.logger.info('Converting texts to vectors.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _words = []
@@ -974,7 +1057,7 @@ class SentCharVectorizer(CharVectorizer):
                      sequences,
                      shape,
                      padding='pre',
-                     truncating='pre',
+                     truncating=(0, 1),
                      pad_value=0):
         if len(shape) != 3:
             raise ValueError('`shape` should be a tuple with three values.')
@@ -985,7 +1068,8 @@ class SentCharVectorizer(CharVectorizer):
             fill_value=pad_value,
             dtype=int)
 
-        self.logger.info(f'Reshaping vectors to shape {shape}.')
+        if self.verbose:
+            self.logger.info(f'Reshaping vectors to shape {shape}.')
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             num_sentences = len(sequences[i])
@@ -1014,7 +1098,7 @@ class SentCharVectorizer(CharVectorizer):
                          texts,
                          shape=None,
                          padding='pre',
-                         truncating='pre',
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 3:
@@ -1027,7 +1111,8 @@ class SentCharVectorizer(CharVectorizer):
         if pad_value is None:
             pad_value = self.token2id['_PAD_']
         _texts = []
-        self.logger.info('Converting texts to vectors.')
+        if self.verbose:
+            self.logger.info('Converting texts to vectors.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
@@ -1195,13 +1280,14 @@ class SentWordVectorizer(WordVectorizer):
                      sequences,
                      shape,
                      padding='pre',
-                     truncating='pre',
+                     truncating=(0, 1),
                      pad_value=0):
         max_sentences, max_words = shape
         vectors = np.full(
             shape=(len(sequences), max_sentences, max_words),
             fill_value=self.token2id['_PAD_'])
-        self.logger.info(f'Reshaping vectors to shape {shape}.')
+        if self.verbose:
+            self.logger.info(f'Reshaping vectors to shape {shape}.')
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             words_vector = self._pad_sequences(
@@ -1225,7 +1311,7 @@ class SentWordVectorizer(WordVectorizer):
                          texts,
                          shape=None,
                          padding='pre',
-                         truncating='pre',
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -1237,7 +1323,8 @@ class SentWordVectorizer(WordVectorizer):
         if pad_value is None:
             pad_value = self.token2id['_PAD_']
         _texts = []
-        self.logger.info('Converting texts to vectors.')
+        if self.verbose:
+            self.logger.info('Converting texts to vectors.')
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []

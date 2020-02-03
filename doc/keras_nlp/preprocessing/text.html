@@ -173,7 +173,7 @@ class Vectorizer:
                      vectors,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         &#34;&#34;&#34;
         Pad vectors to 2D or 3D arrays.
@@ -223,7 +223,7 @@ class Vectorizer:
     def _pad_sequences(sequences,
                        maxlen,
                        padding=&#39;pre&#39;,
-                       truncating=&#39;pre&#39;,
+                       truncating=(0, 1),
                        pad_value=0):
         array = np.full(shape=(len(sequences), maxlen), fill_value=pad_value)
         for idx, seq in enumerate(sequences):
@@ -256,14 +256,17 @@ class Vectorizer:
                         raise ValueError(&#39;`truncating` should sum to 1.&#39;)
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
-                    array[idx, :] = seq[:pre] + seq[-post:]
+                    if post == 0:
+                        array[idx, :] = seq[:pre]
+                    else:
+                        array[idx, :] = seq[:pre] + seq[-post:]
         return array
 
     @staticmethod
     def _reshape(vectors,
                  num_rows,
                  padding=&#39;pre&#39;,
-                 truncating=&#39;pre&#39;,
+                 truncating=(0, 1),
                  pad_value=0):
         &#34;&#34;&#34;
         Reshape `vectors` to `(num_rows, vectors.shape[1:])`.
@@ -343,7 +346,7 @@ class Vectorizer:
             for sentence in text:
                 sentence = self._apply_filters(sentence)
                 words = self.word_tokenize(sentence)
-                _text.append(words)
+                _text.extend(words)
             tokenized_text = _text
         else:
             text = self._apply_filters(text)
@@ -426,13 +429,90 @@ class Vectorizer:
 
         Returns
         -------
-        ndarray : Numpy 2D array with shape `shape`
+        ndarray : Numpy array with shape `shape`
 
         Raises
         ------
-        ValueError : `shape` len is not 2 and `shape` is not None.
+        ValueError : `shape` doesn&#39;t have the expected rank.
         &#34;&#34;&#34;
         raise NotImplementedError()
+
+    def texts_to_vectors_generator(self,
+                                   texts,
+                                   labels,
+                                   shape=None,
+                                   padding=&#39;pre&#39;,
+                                   truncating=(0, 1),
+                                   pad_value=None,
+                                   batch_size=32):
+        &#34;&#34;&#34; Creates a generator iterator to use with the `fit_generator` of a
+        Keras Model object.
+
+        * A `WordVectorizer` will return a 2D array of shape `(len(texts),
+        max_tokens)`.
+        * A `CharVectorizer` will return a 3D array of shape `(len(texts),
+        max_tokens, max_characters)`.
+        * A `SentWordVectorizer` will return a 3D array of shape `(len(texts),
+        max_sentences, max_tokens)`.
+        * A `SentCharVectorizer` will return a 4D array of shape `(len(texts),
+        max_sentences, max_tokens, max_characters)`.
+
+        Parameters
+        ----------
+        texts : list
+            The list of texts to convert. Each item represents a document.
+
+        labels : list
+            The labels that accompany the texts.
+
+        shape : tuple, list or None, default None
+            * In case of `WordVectorizer` the shape defines the tuple
+            `(max_tokens, )` per text.
+            * In case of `CharVectorizer` the shape defines the tuple `(
+            max_tokens, max_characters)`.
+            * In case of `SentWordVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens)`.
+            * In case of `SentCharVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens, max_characters)`.
+
+        padding : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+            Defines the padding method when the length of tokens/characters
+            is less than `max_tokens`/`max_characters`. The filling value is
+            the value of the `pad_value` parameter.
+
+        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+            Defines the cutting method when  the length of tokens/characters
+            is larger than `max_tokens/characters`.
+
+        pad_value : int, default None
+            The value to use when padding is needed. If the value is `None`
+            then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
+
+        Returns
+        -------
+        ndarray : Numpy array with shape `shape`
+
+        Raises
+        ------
+        ValueError : `shape` doesn&#39;t have the expected rank.
+        &#34;&#34;&#34;
+        n_samples = len(texts)
+        n_batches = n_samples // batch_size
+        if n_samples % batch_size:
+            n_batches += 1
+
+        self.verbose = 0
+        while True:
+            for i in range(n_batches):
+                start_idx = i * batch_size
+                end_idx = (i + 1) * batch_size
+                if end_idx &gt; n_samples:
+                    end_idx = n_samples
+                x_batch = self.texts_to_vectors(texts[start_idx:end_idx],
+                                                shape, padding, truncating,
+                                                pad_value)
+                y_batch = labels[start_idx:end_idx]
+                yield x_batch, y_batch
 
     def vectors_to_texts(self, vectors):
         &#34;&#34;&#34;
@@ -479,7 +559,8 @@ class Vectorizer:
 
         if self.id2token is None:
             raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting vectors to texts.&#39;)
         texts = []
         progbar = Progbar(vectors.shape[0], verbose=self.verbose)
         if vectors.ndim == 2:
@@ -632,7 +713,8 @@ class CharVectorizer(Vectorizer):
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info(&#39;Creating vocabulary.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Creating vocabulary.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         # Text length counting words and word length counting characters.
         texts_len, words_len = [], []
@@ -656,14 +738,15 @@ class CharVectorizer(Vectorizer):
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
             fill_value=pad_value,
             dtype=int)
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i, doc in enumerate(sequences):
             chars_vector = self._pad_sequences(
@@ -682,7 +765,7 @@ class CharVectorizer(Vectorizer):
                          texts: list,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -694,7 +777,8 @@ class CharVectorizer(Vectorizer):
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
@@ -813,7 +897,8 @@ class WordVectorizer(Vectorizer):
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info(&#39;Creating vocabulary.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Creating vocabulary.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         docs_len = []
         for i, text in enumerate(texts):
@@ -830,7 +915,7 @@ class WordVectorizer(Vectorizer):
                      vectors,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         pass
 
@@ -838,7 +923,7 @@ class WordVectorizer(Vectorizer):
                          texts: list,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 1:
@@ -849,7 +934,8 @@ class WordVectorizer(Vectorizer):
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _words = []
@@ -997,7 +1083,7 @@ class SentCharVectorizer(CharVectorizer):
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         if len(shape) != 3:
             raise ValueError(&#39;`shape` should be a tuple with three values.&#39;)
@@ -1008,7 +1094,8 @@ class SentCharVectorizer(CharVectorizer):
             fill_value=pad_value,
             dtype=int)
 
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             num_sentences = len(sequences[i])
@@ -1037,7 +1124,7 @@ class SentCharVectorizer(CharVectorizer):
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 3:
@@ -1050,7 +1137,8 @@ class SentCharVectorizer(CharVectorizer):
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
@@ -1218,13 +1306,14 @@ class SentWordVectorizer(WordVectorizer):
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         max_sentences, max_words = shape
         vectors = np.full(
             shape=(len(sequences), max_sentences, max_words),
             fill_value=self.token2id[&#39;_PAD_&#39;])
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             words_vector = self._pad_sequences(
@@ -1248,7 +1337,7 @@ class SentWordVectorizer(WordVectorizer):
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -1260,7 +1349,8 @@ class SentWordVectorizer(WordVectorizer):
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
@@ -1559,7 +1649,8 @@ represents an out of vocabulary token.</dd>
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info(&#39;Creating vocabulary.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Creating vocabulary.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         # Text length counting words and word length counting characters.
         texts_len, words_len = [], []
@@ -1583,14 +1674,15 @@ represents an out of vocabulary token.</dd>
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         max_words, max_characters = shape
         vectors = np.full(
             shape=(len(sequences), max_words, max_characters),
             fill_value=pad_value,
             dtype=int)
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i, doc in enumerate(sequences):
             chars_vector = self._pad_sequences(
@@ -1609,7 +1701,7 @@ represents an out of vocabulary token.</dd>
                          texts: list,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -1621,7 +1713,8 @@ represents an out of vocabulary token.</dd>
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             text = self._apply_filters(text)
@@ -1681,6 +1774,7 @@ represents an out of vocabulary token.</dd>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.fit_on_texts" href="#keras_nlp.preprocessing.text.Vectorizer.fit_on_texts">fit_on_texts</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.stats" href="#keras_nlp.preprocessing.text.Vectorizer.stats">stats</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors">texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator">texts_to_vectors_generator</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts" href="#keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts">vectors_to_texts</a></code></li>
 </ul>
 </li>
@@ -1870,7 +1964,7 @@ represents an out of vocabulary token.</dd>
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         if len(shape) != 3:
             raise ValueError(&#39;`shape` should be a tuple with three values.&#39;)
@@ -1881,7 +1975,8 @@ represents an out of vocabulary token.</dd>
             fill_value=pad_value,
             dtype=int)
 
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             num_sentences = len(sequences[i])
@@ -1910,7 +2005,7 @@ represents an out of vocabulary token.</dd>
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 3:
@@ -1923,7 +2018,8 @@ represents an out of vocabulary token.</dd>
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
@@ -2004,6 +2100,7 @@ represents an out of vocabulary token.</dd>
 <li><code><a title="keras_nlp.preprocessing.text.CharVectorizer.fit_on_texts" href="#keras_nlp.preprocessing.text.Vectorizer.fit_on_texts">fit_on_texts</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.CharVectorizer.stats" href="#keras_nlp.preprocessing.text.Vectorizer.stats">stats</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.CharVectorizer.texts_to_vectors" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors">texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.text.CharVectorizer.texts_to_vectors_generator" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator">texts_to_vectors_generator</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.CharVectorizer.vectors_to_texts" href="#keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts">vectors_to_texts</a></code></li>
 </ul>
 </li>
@@ -2175,13 +2272,14 @@ represents an out of vocabulary token.</dd>
                      sequences,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         max_sentences, max_words = shape
         vectors = np.full(
             shape=(len(sequences), max_sentences, max_words),
             fill_value=self.token2id[&#39;_PAD_&#39;])
-        self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
+        if self.verbose:
+            self.logger.info(f&#39;Reshaping vectors to shape {shape}.&#39;)
         progbar = Progbar(len(sequences), verbose=self.verbose)
         for i in range(len(sequences)):
             words_vector = self._pad_sequences(
@@ -2205,7 +2303,7 @@ represents an out of vocabulary token.</dd>
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 2:
@@ -2217,7 +2315,8 @@ represents an out of vocabulary token.</dd>
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _text = []
@@ -2295,6 +2394,7 @@ represents an out of vocabulary token.</dd>
 <li><code><a title="keras_nlp.preprocessing.text.WordVectorizer.fit_on_texts" href="#keras_nlp.preprocessing.text.Vectorizer.fit_on_texts">fit_on_texts</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.WordVectorizer.stats" href="#keras_nlp.preprocessing.text.Vectorizer.stats">stats</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.WordVectorizer.texts_to_vectors" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors">texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.text.WordVectorizer.texts_to_vectors_generator" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator">texts_to_vectors_generator</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.WordVectorizer.vectors_to_texts" href="#keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts">vectors_to_texts</a></code></li>
 </ul>
 </li>
@@ -2442,7 +2542,7 @@ represents an out of vocabulary token.</dd>
                      vectors,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         &#34;&#34;&#34;
         Pad vectors to 2D or 3D arrays.
@@ -2492,7 +2592,7 @@ represents an out of vocabulary token.</dd>
     def _pad_sequences(sequences,
                        maxlen,
                        padding=&#39;pre&#39;,
-                       truncating=&#39;pre&#39;,
+                       truncating=(0, 1),
                        pad_value=0):
         array = np.full(shape=(len(sequences), maxlen), fill_value=pad_value)
         for idx, seq in enumerate(sequences):
@@ -2525,14 +2625,17 @@ represents an out of vocabulary token.</dd>
                         raise ValueError(&#39;`truncating` should sum to 1.&#39;)
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
-                    array[idx, :] = seq[:pre] + seq[-post:]
+                    if post == 0:
+                        array[idx, :] = seq[:pre]
+                    else:
+                        array[idx, :] = seq[:pre] + seq[-post:]
         return array
 
     @staticmethod
     def _reshape(vectors,
                  num_rows,
                  padding=&#39;pre&#39;,
-                 truncating=&#39;pre&#39;,
+                 truncating=(0, 1),
                  pad_value=0):
         &#34;&#34;&#34;
         Reshape `vectors` to `(num_rows, vectors.shape[1:])`.
@@ -2612,7 +2715,7 @@ represents an out of vocabulary token.</dd>
             for sentence in text:
                 sentence = self._apply_filters(sentence)
                 words = self.word_tokenize(sentence)
-                _text.append(words)
+                _text.extend(words)
             tokenized_text = _text
         else:
             text = self._apply_filters(text)
@@ -2695,13 +2798,90 @@ represents an out of vocabulary token.</dd>
 
         Returns
         -------
-        ndarray : Numpy 2D array with shape `shape`
+        ndarray : Numpy array with shape `shape`
 
         Raises
         ------
-        ValueError : `shape` len is not 2 and `shape` is not None.
+        ValueError : `shape` doesn&#39;t have the expected rank.
         &#34;&#34;&#34;
         raise NotImplementedError()
+
+    def texts_to_vectors_generator(self,
+                                   texts,
+                                   labels,
+                                   shape=None,
+                                   padding=&#39;pre&#39;,
+                                   truncating=(0, 1),
+                                   pad_value=None,
+                                   batch_size=32):
+        &#34;&#34;&#34; Creates a generator iterator to use with the `fit_generator` of a
+        Keras Model object.
+
+        * A `WordVectorizer` will return a 2D array of shape `(len(texts),
+        max_tokens)`.
+        * A `CharVectorizer` will return a 3D array of shape `(len(texts),
+        max_tokens, max_characters)`.
+        * A `SentWordVectorizer` will return a 3D array of shape `(len(texts),
+        max_sentences, max_tokens)`.
+        * A `SentCharVectorizer` will return a 4D array of shape `(len(texts),
+        max_sentences, max_tokens, max_characters)`.
+
+        Parameters
+        ----------
+        texts : list
+            The list of texts to convert. Each item represents a document.
+
+        labels : list
+            The labels that accompany the texts.
+
+        shape : tuple, list or None, default None
+            * In case of `WordVectorizer` the shape defines the tuple
+            `(max_tokens, )` per text.
+            * In case of `CharVectorizer` the shape defines the tuple `(
+            max_tokens, max_characters)`.
+            * In case of `SentWordVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens)`.
+            * In case of `SentCharVectorizer` the shape defines the tuple `(
+            max_sentences, max_tokens, max_characters)`.
+
+        padding : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+            Defines the padding method when the length of tokens/characters
+            is less than `max_tokens`/`max_characters`. The filling value is
+            the value of the `pad_value` parameter.
+
+        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+            Defines the cutting method when  the length of tokens/characters
+            is larger than `max_tokens/characters`.
+
+        pad_value : int, default None
+            The value to use when padding is needed. If the value is `None`
+            then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
+
+        Returns
+        -------
+        ndarray : Numpy array with shape `shape`
+
+        Raises
+        ------
+        ValueError : `shape` doesn&#39;t have the expected rank.
+        &#34;&#34;&#34;
+        n_samples = len(texts)
+        n_batches = n_samples // batch_size
+        if n_samples % batch_size:
+            n_batches += 1
+
+        self.verbose = 0
+        while True:
+            for i in range(n_batches):
+                start_idx = i * batch_size
+                end_idx = (i + 1) * batch_size
+                if end_idx &gt; n_samples:
+                    end_idx = n_samples
+                x_batch = self.texts_to_vectors(texts[start_idx:end_idx],
+                                                shape, padding, truncating,
+                                                pad_value)
+                y_batch = labels[start_idx:end_idx]
+                yield x_batch, y_batch
 
     def vectors_to_texts(self, vectors):
         &#34;&#34;&#34;
@@ -2748,7 +2928,8 @@ represents an out of vocabulary token.</dd>
 
         if self.id2token is None:
             raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-        self.logger.info(&#39;Converting vectors to texts.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting vectors to texts.&#39;)
         texts = []
         progbar = Progbar(vectors.shape[0], verbose=self.verbose)
         if vectors.ndim == 2:
@@ -2909,11 +3090,11 @@ then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><strong><code>ndarray</code></strong> :&ensp;<code>Numpy</code> <code>2D</code> <code>array</code> <code>with</code> <code>shape</code> <code>shape</code></dt>
+<dt><strong><code>ndarray</code></strong> :&ensp;<code>Numpy</code> <code>array</code> <code>with</code> <code>shape</code> <code>shape</code></dt>
 <dd>&nbsp;</dd>
 </dl>
 <h2 id="raises">Raises</h2>
-<p>ValueError : <code>shape</code> len is not 2 and <code>shape</code> is not None.</p></section>
+<p>ValueError : <code>shape</code> doesn't have the expected rank.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -2967,13 +3148,151 @@ def texts_to_vectors(self,
 
     Returns
     -------
-    ndarray : Numpy 2D array with shape `shape`
+    ndarray : Numpy array with shape `shape`
 
     Raises
     ------
-    ValueError : `shape` len is not 2 and `shape` is not None.
+    ValueError : `shape` doesn&#39;t have the expected rank.
     &#34;&#34;&#34;
     raise NotImplementedError()</code></pre>
+</details>
+</dd>
+<dt id="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator"><code class="name flex">
+<span>def <span class="ident">texts_to_vectors_generator</span></span>(<span>self, texts, labels, shape=None, padding='pre', truncating=(0, 1), pad_value=None, batch_size=32)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Creates a generator iterator to use with the <code>fit_generator</code> of a
+Keras Model object.</p>
+<ul>
+<li>A <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a> will return a 2D array of shape <code>(len(texts),
+max_tokens)</code>.</li>
+<li>A <a title="keras_nlp.preprocessing.text.CharVectorizer" href="#keras_nlp.preprocessing.text.CharVectorizer"><code>CharVectorizer</code></a> will return a 3D array of shape <code>(len(texts),
+max_tokens, max_characters)</code>.</li>
+<li>A <a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a> will return a 3D array of shape <code>(len(texts),
+max_sentences, max_tokens)</code>.</li>
+<li>A <a title="keras_nlp.preprocessing.text.SentCharVectorizer" href="#keras_nlp.preprocessing.text.SentCharVectorizer"><code>SentCharVectorizer</code></a> will return a 4D array of shape <code>(len(texts),
+max_sentences, max_tokens, max_characters)</code>.</li>
+</ul>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>texts</code></strong> :&ensp;<code>list</code></dt>
+<dd>The list of texts to convert. Each item represents a document.</dd>
+<dt><strong><code>labels</code></strong> :&ensp;<code>list</code></dt>
+<dd>The labels that accompany the texts.</dd>
+<dt><strong><code>shape</code></strong> :&ensp;<code>tuple</code>, <code>list</code> or <code>None</code>, default <code>None</code></dt>
+<dd>
+<ul>
+<li>In case of <a title="keras_nlp.preprocessing.text.WordVectorizer" href="#keras_nlp.preprocessing.text.WordVectorizer"><code>WordVectorizer</code></a> the shape defines the tuple
+<code>(max_tokens, )</code> per text.</li>
+<li>In case of <a title="keras_nlp.preprocessing.text.CharVectorizer" href="#keras_nlp.preprocessing.text.CharVectorizer"><code>CharVectorizer</code></a> the shape defines the tuple <code>(
+max_tokens, max_characters)</code>.</li>
+<li>In case of <a title="keras_nlp.preprocessing.text.SentWordVectorizer" href="#keras_nlp.preprocessing.text.SentWordVectorizer"><code>SentWordVectorizer</code></a> the shape defines the tuple <code>(
+max_sentences, max_tokens)</code>.</li>
+<li>In case of <a title="keras_nlp.preprocessing.text.SentCharVectorizer" href="#keras_nlp.preprocessing.text.SentCharVectorizer"><code>SentCharVectorizer</code></a> the shape defines the tuple <code>(
+max_sentences, max_tokens, max_characters)</code>.</li>
+</ul>
+</dd>
+<dt><strong><code>padding</code></strong> :&ensp;<code>str</code>, <code>options</code> {<code>'pre'</code>, <code>'post'</code>}, default <code>'pre'</code></dt>
+<dd>Defines the padding method when the length of tokens/characters
+is less than <code>max_tokens</code>/<code>max_characters</code>. The filling value is
+the value of the <code>pad_value</code> parameter.</dd>
+</dl>
+<p>truncating : str, options {'pre', 'post'}, default <code>(0, 1)</code>.
+Defines the cutting method when
+the length of tokens/characters
+is larger than <code>max_tokens/characters</code>.</p>
+<dl>
+<dt><strong><code>pad_value</code></strong> :&ensp;<code>int</code>, default <code>None</code></dt>
+<dd>The value to use when padding is needed. If the value is <code>None</code>
+then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>ndarray</code></strong> :&ensp;<code>Numpy</code> <code>array</code> <code>with</code> <code>shape</code> <code>shape</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<p>ValueError : <code>shape</code> doesn't have the expected rank.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def texts_to_vectors_generator(self,
+                               texts,
+                               labels,
+                               shape=None,
+                               padding=&#39;pre&#39;,
+                               truncating=(0, 1),
+                               pad_value=None,
+                               batch_size=32):
+    &#34;&#34;&#34; Creates a generator iterator to use with the `fit_generator` of a
+    Keras Model object.
+
+    * A `WordVectorizer` will return a 2D array of shape `(len(texts),
+    max_tokens)`.
+    * A `CharVectorizer` will return a 3D array of shape `(len(texts),
+    max_tokens, max_characters)`.
+    * A `SentWordVectorizer` will return a 3D array of shape `(len(texts),
+    max_sentences, max_tokens)`.
+    * A `SentCharVectorizer` will return a 4D array of shape `(len(texts),
+    max_sentences, max_tokens, max_characters)`.
+
+    Parameters
+    ----------
+    texts : list
+        The list of texts to convert. Each item represents a document.
+
+    labels : list
+        The labels that accompany the texts.
+
+    shape : tuple, list or None, default None
+        * In case of `WordVectorizer` the shape defines the tuple
+        `(max_tokens, )` per text.
+        * In case of `CharVectorizer` the shape defines the tuple `(
+        max_tokens, max_characters)`.
+        * In case of `SentWordVectorizer` the shape defines the tuple `(
+        max_sentences, max_tokens)`.
+        * In case of `SentCharVectorizer` the shape defines the tuple `(
+        max_sentences, max_tokens, max_characters)`.
+
+    padding : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+        Defines the padding method when the length of tokens/characters
+        is less than `max_tokens`/`max_characters`. The filling value is
+        the value of the `pad_value` parameter.
+
+    truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+        Defines the cutting method when  the length of tokens/characters
+        is larger than `max_tokens/characters`.
+
+    pad_value : int, default None
+        The value to use when padding is needed. If the value is `None`
+        then the `token2id[&#39;_PAD_&#39;]` value is used which by default is 0.
+
+    Returns
+    -------
+    ndarray : Numpy array with shape `shape`
+
+    Raises
+    ------
+    ValueError : `shape` doesn&#39;t have the expected rank.
+    &#34;&#34;&#34;
+    n_samples = len(texts)
+    n_batches = n_samples // batch_size
+    if n_samples % batch_size:
+        n_batches += 1
+
+    self.verbose = 0
+    while True:
+        for i in range(n_batches):
+            start_idx = i * batch_size
+            end_idx = (i + 1) * batch_size
+            if end_idx &gt; n_samples:
+                end_idx = n_samples
+            x_batch = self.texts_to_vectors(texts[start_idx:end_idx],
+                                            shape, padding, truncating,
+                                            pad_value)
+            y_batch = labels[start_idx:end_idx]
+            yield x_batch, y_batch</code></pre>
 </details>
 </dd>
 <dt id="keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts"><code class="name flex">
@@ -3063,7 +3382,8 @@ is a list of its characters.</li>
 
     if self.id2token is None:
         raise ValueError(&#39;Please use `fit_on_texts` method first.&#39;)
-    self.logger.info(&#39;Converting vectors to texts.&#39;)
+    if self.verbose:
+        self.logger.info(&#39;Converting vectors to texts.&#39;)
     texts = []
     progbar = Progbar(vectors.shape[0], verbose=self.verbose)
     if vectors.ndim == 2:
@@ -3222,7 +3542,8 @@ represents an out of vocabulary token.</dd>
 
     def fit_on_texts(self, texts):
         self._init_vocab()
-        self.logger.info(&#39;Creating vocabulary.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Creating vocabulary.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         docs_len = []
         for i, text in enumerate(texts):
@@ -3239,7 +3560,7 @@ represents an out of vocabulary token.</dd>
                      vectors,
                      shape,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;pre&#39;,
+                     truncating=(0, 1),
                      pad_value=0):
         pass
 
@@ -3247,7 +3568,7 @@ represents an out of vocabulary token.</dd>
                          texts: list,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;pre&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         if shape is not None:
             if len(shape) != 1:
@@ -3258,7 +3579,8 @@ represents an out of vocabulary token.</dd>
         if pad_value is None:
             pad_value = self.token2id[&#39;_PAD_&#39;]
         _texts = []
-        self.logger.info(&#39;Converting texts to vectors.&#39;)
+        if self.verbose:
+            self.logger.info(&#39;Converting texts to vectors.&#39;)
         progbar = Progbar(len(texts), verbose=self.verbose)
         for text in texts:
             _words = []
@@ -3313,6 +3635,7 @@ represents an out of vocabulary token.</dd>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.fit_on_texts" href="#keras_nlp.preprocessing.text.Vectorizer.fit_on_texts">fit_on_texts</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.stats" href="#keras_nlp.preprocessing.text.Vectorizer.stats">stats</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors">texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator">texts_to_vectors_generator</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts" href="#keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts">vectors_to_texts</a></code></li>
 </ul>
 </li>
@@ -3354,6 +3677,7 @@ represents an out of vocabulary token.</dd>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.fit_on_texts" href="#keras_nlp.preprocessing.text.Vectorizer.fit_on_texts">fit_on_texts</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.stats" href="#keras_nlp.preprocessing.text.Vectorizer.stats">stats</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors">texts_to_vectors</a></code></li>
+<li><code><a title="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator" href="#keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors_generator">texts_to_vectors_generator</a></code></li>
 <li><code><a title="keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts" href="#keras_nlp.preprocessing.text.Vectorizer.vectors_to_texts">vectors_to_texts</a></code></li>
 </ul>
 </li>

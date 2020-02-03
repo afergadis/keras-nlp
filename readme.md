@@ -256,6 +256,11 @@ Working examples are available as Jupyter notebooks in the `notebooks`
 directory.
 
 # Experimental Features
+## Generators (**NEW**)
+The method `texts_to_vectors` are now implemented also as generators to use
+with the `fit_generator` method of a Keras model.
+Please see examples of usage at the `notebooks`.
+
 ## Truncating
 When texts have to be truncated, traditionally there are two options: `pre` to
 *drop* text from the beging of the sentences and `post` to drop from the end.
