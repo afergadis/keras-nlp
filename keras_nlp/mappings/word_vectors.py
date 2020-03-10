@@ -36,7 +36,7 @@ class WordVectors(abc.ABC):
     >>> assert embedding_layer.input_dim = word_vectorizer.num_tokens
     """
 
-    def __init__(self, vocab, oov_token=None):
+    def __init__(self, vocab, oov_token=None, replace_oov_method='same'):
         """
         Parameters
         ----------
@@ -47,9 +47,24 @@ class WordVectors(abc.ABC):
             If the vocabulary has an out-of-vocabulary token, then this
             parameter should have the key of that token. A random vector is
             create with uniform distribution in range [-0.05, 0.05].
+
+        replace_oov_method : str, {'same', 'random'}, default 'same'
+            The vector to use for the oov tokens. If 'same' then all of the
+            oov tokens will have the save vector. If 'random' each oov token
+            will get a random vector.
+
+        Raises
+        ------
+        ValueError
+            The value of `replace_oov_method` is not 'same' or 'random'.
         """
         self.vocab = vocab
         self.oov_token = oov_token
+        if replace_oov_method not in ('same', 'random'):
+            raise ValueError('Unrecognized option {} for '
+                             '`replace_oov_method`. Valid options are: '
+                             '"same", "random"'.format(replace_oov_method))
+        self.replace_oov_method = replace_oov_method
         self.vector_len = 0
         self.vectors = None
 
@@ -70,21 +85,24 @@ class WordVectors(abc.ABC):
 
     def _replace_oov_tokens(self, oov_token_id):
         """
-        Replace the vectors of words in vocab not found in the loaded file,
-        with the vector of the oov token.
+        Replace the vectors of words in vocab not found in the loaded file.
 
         Parameters
         ----------
         oov_token_id : int
-            The index in vectors to the vector of the oov token.
+            The index to the vector of the oov token.
         """
-        zeros_vector = np.zeros(shape=(self.vectors.shape[-1],))
+        zeros_vector = np.zeros(shape=(self.vectors.shape[-1], ))
         oov_vector = self.vectors[oov_token_id]
         for word, idx in self.vocab.items():
-            if idx == 0:
+            if idx == 0 or idx == oov_token_id:
                 continue
             if np.array_equal(self.vectors[idx], zeros_vector):
-                self.vectors[idx] = oov_vector
+                if self.replace_oov_method == 'same':
+                    self.vectors[idx] = oov_vector
+                else:
+                    self.vectors[idx] = np.random.uniform(
+                        -0.05, 0.05, self.vector_len)
 
     @abc.abstractmethod
     def load(self, file_path):
@@ -165,13 +183,13 @@ class Glove(WordVectors):
     Load word vectors from a Glove file.
     """
 
-    def __init__(self, vocab, oov_token=None):
-        super().__init__(vocab, oov_token)
+    def __init__(self, vocab, oov_token=None, replace_oov_method='same'):
+        super().__init__(vocab, oov_token, replace_oov_method)
 
     def load(self, file_path):
         """
         Load word vectors from a Glove file.
-        
+
         Parameters
         ----------
         file_path : str
@@ -217,8 +235,8 @@ class Glove(WordVectors):
 class W2V(WordVectors):
     """ Load word vectors from a Word2Vec file. """
 
-    def __init__(self, vocab, oov_token=None):
-        super().__init__(vocab, oov_token)
+    def __init__(self, vocab, oov_token=None, replace_oov_method='same'):
+        super().__init__(vocab, oov_token, replace_oov_method)
 
     def load(self, file_path, binary=False):
         """
@@ -313,4 +331,3 @@ if __name__ == '__main__':
     import doctest
 
     doctest.testmod()
-
