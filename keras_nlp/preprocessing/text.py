@@ -1173,9 +1173,9 @@ class SentCharVectorizer(CharVectorizer):
             msg = 'SentCharVectorizer(Vocab Size: 0)'
         else:
             msg = 'SentCharVectorizer(Vocab Size: {}, Max Words: {}, ' \
-                  'Max Characters: {})'.format(
-                len(self.token2id), self.words_stats['max'],
-                self.chars_stats['max'])
+                  'Max Characters: {})'.format(len(self.token2id),
+                                               self.words_stats['max'],
+                                               self.chars_stats['max'])
         return msg
 
     def __repr__(self):
@@ -1381,10 +1381,8 @@ class SentWordVectorizer(WordVectorizer):
         if self.token2id is None:
             msg = 'SentWordVectorizer(Vocab Size: 0)'
         else:
-            msg = 'SentWordVectorizer(Vocab Size: {}, ' \
-                  'Max Characters: {})'.format(
-                len(self.token2id), self.words_stats['max'],
-                self.chars_stats['max'])
+            msg = 'SentWordVectorizer(Vocab Size: {}, Max Words: {})'.format(
+                len(self.token2id), self.words_stats['max'])
         return msg
 
     def __repr__(self):
