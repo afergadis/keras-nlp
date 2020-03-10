@@ -79,6 +79,8 @@ class Vectorizer:
         """
         if word_tokenize is None:
             self.word_tokenize = segment.word_tokenize
+        else:
+            self.word_tokenize = word_tokenize
         self.num_tokens = num_tokens
         if filters is not None:
             self.filters = '[' + re.escape(filters) + ']'
