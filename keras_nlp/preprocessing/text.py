@@ -230,6 +230,13 @@ class Vectorizer:
                             'beginning and one for the end.')
                     if sum(truncating) != 1:
                         raise ValueError('`truncating` should sum to 1.')
+                    # In case maxlen is odd and truncating tuple is (0.5, 0.5)
+                    # we have pre == post and pre + post > max_len.
+                    # E.g., maxlen=15, pre=round(15 * 0.5)=round(7,5)=8 and
+                    # post=np.ceil(7.5)=8
+                    # A work around is to change the tuple to (0.49, 0.51).
+                    if maxlen % 2 and truncating[0] == truncating[1]:
+                        truncating = (0.49, 0.51)
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
                     if post == 0:
@@ -361,7 +368,7 @@ class Vectorizer:
                          texts,
                          shape=None,
                          padding='pre',
-                         truncating='post',
+                         truncating=(0, 1),
                          pad_value=None):
         """
         Convert a list of texts to a 2D, 3D or 4D array.
@@ -395,7 +402,7 @@ class Vectorizer:
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {'pre', 'post'}, default 'pre'
+        truncating : tuple, or str with options {'pre', 'post'}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
@@ -405,7 +412,7 @@ class Vectorizer:
 
         Returns
         -------
-        ndarray : Numpy array with shape `shape`
+        ndarray : Numpy array with shape `len(texts) x shape`
 
         Raises
         ------
@@ -456,7 +463,7 @@ class Vectorizer:
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {'pre', 'post'}, default `(0, 1)`.
+        truncating : tuple, or str with options {'pre', 'post'}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 

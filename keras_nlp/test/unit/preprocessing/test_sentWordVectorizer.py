@@ -59,7 +59,7 @@ class TestSentWordVectorizer(TestCase):
             for sentence in sentences:
                 _doc.append(self.vectorizer._apply_filters(sentence).split())
             expected_docs.append(_doc)
-        self.assertListEqual(docs, expected_docs)
+        self.assertListEqual(list(docs), expected_docs)
 
 
 class TestSentWordVectorizerTruncating(TestCase):
@@ -75,7 +75,7 @@ class TestSentWordVectorizerTruncating(TestCase):
             truncating='post')
         result = self.vectorizer.vectors_to_texts(vectors)
         expected = [DOC0_SW_TPOST, DOC1_SW_TPOST]
-        self.assertListEqual(result, expected)
+        self.assertListEqual(list(result), expected)
 
     def test_vectors_to_text_truncating_pre(self):
         vectors = self.vectorizer.texts_to_vectors(
@@ -85,7 +85,7 @@ class TestSentWordVectorizerTruncating(TestCase):
             truncating='pre')
         result = self.vectorizer.vectors_to_texts(vectors)
         expected = [DOC0_SW_TPRE, DOC1_SW_TPRE]
-        self.assertListEqual(result, expected)
+        self.assertListEqual(list(result), expected)
 
     def test_vectors_to_text_truncating_offsets(self):
         vectorizer = SentWordVectorizer(sent_tokenize)
@@ -111,7 +111,7 @@ class TestSentWordVectorizerPadding(TestCase):
 
     def expected_vector(self, doc):
         # Length of sentences of DOC0.
-        sents: list = sent_tokenize(doc)
+        sents = sent_tokenize(doc)
         sent_len = len(sents)
         # LARGE_MAX_SENTENCES must be at least by 1 larger from the total
         # sentences of the document, to test padding.

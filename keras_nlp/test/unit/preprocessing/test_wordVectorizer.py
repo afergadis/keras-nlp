@@ -58,7 +58,7 @@ class TestWordVectorizerWithDefaultValues(TestCase):
         expected_docs = [
             self.vectorizer._apply_filters(doc).split() for doc in DOCS
         ]
-        self.assertListEqual(docs, expected_docs)
+        self.assertListEqual(list(docs), expected_docs)
 
 
 class TestWordVectorizerWithSmallValues(TestCase):
@@ -89,9 +89,15 @@ class TestWordVectorizerWithSmallValues(TestCase):
         avg = int(sum(sents_len) / len(sents_len))
         target_shape = (avg, )
         truncating_shape = (0.5, 0.5)
-        vectors = vectorizer.texts_to_vectors(doc_sents,
-                                              shape=target_shape,
-                                              truncating=truncating_shape)
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
+        # Don't consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
+
+        # Check with an even number of words in sentence and 50/50 truncating.
+        target_shape = (avg - 1, )
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
         # Don't consider the number of texts.
         self.assertTupleEqual(vectors.shape[1:], target_shape)
 
