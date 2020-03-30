@@ -29,9 +29,20 @@ def sent_tokenize(
     See Also
     --------
     `https://stackoverflow.com/a/25736082/1143894`_
+
+    Examples
+    --------
+    >>> doc = "MI patients had 18% higher plasma levels of MAp44 "\
+    "(IQR 11-25%) as compared to the healthy control group (p < 0.001). "\
+    "However, neither salvage index (Spearman rho -0.1, p = 0.28) " \
+    "nor final infarct size (Spearman rho 0.02, p = 0.83) correlated "\
+    "with plasma levels of MAp44."
+    >>> sents = sent_tokenize(doc)
+    >>> print(len(sents))
+    2
     """
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
-    return substitutions.split(subst)
+    return list(substitutions.split(subst))
 
 
 def word_tokenize(text, regex="\W+|\t|\n"):
@@ -144,7 +155,7 @@ class SentenceSplitter:
             A list of sentences.
         """
         sents = []
-        subtext = re.sub('\s+', ' ', text.replace('\n', ' ')).strip()
+        subtext = re.sub(r'\s+', ' ', text.replace('\n', ' ')).strip()
         if len(subtext) > 0:
             ss = self._split_sentences(subtext)
             sents.extend([s for s in ss if (len(s.strip()) > 0)])
