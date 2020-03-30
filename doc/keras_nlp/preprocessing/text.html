@@ -105,6 +105,8 @@ class Vectorizer:
         &#34;&#34;&#34;
         if word_tokenize is None:
             self.word_tokenize = segment.word_tokenize
+        else:
+            self.word_tokenize = word_tokenize
         self.num_tokens = num_tokens
         if filters is not None:
             self.filters = &#39;[&#39; + re.escape(filters) + &#39;]&#39;
@@ -254,6 +256,13 @@ class Vectorizer:
                             &#39;beginning and one for the end.&#39;)
                     if sum(truncating) != 1:
                         raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                    # In case maxlen is odd and truncating tuple is (0.5, 0.5)
+                    # we have pre == post and pre + post &gt; max_len.
+                    # E.g., maxlen=15, pre=round(15 * 0.5)=round(7,5)=8 and
+                    # post=np.ceil(7.5)=8
+                    # A work around is to change the tuple to (0.49, 0.51).
+                    if maxlen % 2 and truncating[0] == truncating[1]:
+                        truncating = (0.49, 0.51)
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
                     if post == 0:
@@ -385,7 +394,7 @@ class Vectorizer:
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;post&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         &#34;&#34;&#34;
         Convert a list of texts to a 2D, 3D or 4D array.
@@ -419,7 +428,7 @@ class Vectorizer:
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+        truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
@@ -429,7 +438,7 @@ class Vectorizer:
 
         Returns
         -------
-        ndarray : Numpy array with shape `shape`
+        ndarray : Numpy array with shape `len(texts) x shape`
 
         Raises
         ------
@@ -480,7 +489,7 @@ class Vectorizer:
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+        truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
@@ -1199,9 +1208,9 @@ class SentCharVectorizer(CharVectorizer):
             msg = &#39;SentCharVectorizer(Vocab Size: 0)&#39;
         else:
             msg = &#39;SentCharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
-                  &#39;Max Characters: {})&#39;.format(
-                len(self.token2id), self.words_stats[&#39;max&#39;],
-                self.chars_stats[&#39;max&#39;])
+                  &#39;Max Characters: {})&#39;.format(len(self.token2id),
+                                               self.words_stats[&#39;max&#39;],
+                                               self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -1407,10 +1416,8 @@ class SentWordVectorizer(WordVectorizer):
         if self.token2id is None:
             msg = &#39;SentWordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentWordVectorizer(Vocab Size: {}, &#39; \
-                  &#39;Max Characters: {})&#39;.format(
-                len(self.token2id), self.words_stats[&#39;max&#39;],
-                self.chars_stats[&#39;max&#39;])
+            msg = &#39;SentWordVectorizer(Vocab Size: {}, Max Words: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -2080,9 +2087,9 @@ represents an out of vocabulary token.</dd>
             msg = &#39;SentCharVectorizer(Vocab Size: 0)&#39;
         else:
             msg = &#39;SentCharVectorizer(Vocab Size: {}, Max Words: {}, &#39; \
-                  &#39;Max Characters: {})&#39;.format(
-                len(self.token2id), self.words_stats[&#39;max&#39;],
-                self.chars_stats[&#39;max&#39;])
+                  &#39;Max Characters: {})&#39;.format(len(self.token2id),
+                                               self.words_stats[&#39;max&#39;],
+                                               self.chars_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -2373,10 +2380,8 @@ represents an out of vocabulary token.</dd>
         if self.token2id is None:
             msg = &#39;SentWordVectorizer(Vocab Size: 0)&#39;
         else:
-            msg = &#39;SentWordVectorizer(Vocab Size: {}, &#39; \
-                  &#39;Max Characters: {})&#39;.format(
-                len(self.token2id), self.words_stats[&#39;max&#39;],
-                self.chars_stats[&#39;max&#39;])
+            msg = &#39;SentWordVectorizer(Vocab Size: {}, Max Words: {})&#39;.format(
+                len(self.token2id), self.words_stats[&#39;max&#39;])
         return msg
 
     def __repr__(self):
@@ -2474,6 +2479,8 @@ represents an out of vocabulary token.</dd>
         &#34;&#34;&#34;
         if word_tokenize is None:
             self.word_tokenize = segment.word_tokenize
+        else:
+            self.word_tokenize = word_tokenize
         self.num_tokens = num_tokens
         if filters is not None:
             self.filters = &#39;[&#39; + re.escape(filters) + &#39;]&#39;
@@ -2623,6 +2630,13 @@ represents an out of vocabulary token.</dd>
                             &#39;beginning and one for the end.&#39;)
                     if sum(truncating) != 1:
                         raise ValueError(&#39;`truncating` should sum to 1.&#39;)
+                    # In case maxlen is odd and truncating tuple is (0.5, 0.5)
+                    # we have pre == post and pre + post &gt; max_len.
+                    # E.g., maxlen=15, pre=round(15 * 0.5)=round(7,5)=8 and
+                    # post=np.ceil(7.5)=8
+                    # A work around is to change the tuple to (0.49, 0.51).
+                    if maxlen % 2 and truncating[0] == truncating[1]:
+                        truncating = (0.49, 0.51)
                     pre = round(maxlen * truncating[0])
                     post = int(np.ceil(maxlen * truncating[1]))
                     if post == 0:
@@ -2754,7 +2768,7 @@ represents an out of vocabulary token.</dd>
                          texts,
                          shape=None,
                          padding=&#39;pre&#39;,
-                         truncating=&#39;post&#39;,
+                         truncating=(0, 1),
                          pad_value=None):
         &#34;&#34;&#34;
         Convert a list of texts to a 2D, 3D or 4D array.
@@ -2788,7 +2802,7 @@ represents an out of vocabulary token.</dd>
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+        truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
@@ -2798,7 +2812,7 @@ represents an out of vocabulary token.</dd>
 
         Returns
         -------
-        ndarray : Numpy array with shape `shape`
+        ndarray : Numpy array with shape `len(texts) x shape`
 
         Raises
         ------
@@ -2849,7 +2863,7 @@ represents an out of vocabulary token.</dd>
             is less than `max_tokens`/`max_characters`. The filling value is
             the value of the `pad_value` parameter.
 
-        truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+        truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
             Defines the cutting method when  the length of tokens/characters
             is larger than `max_tokens/characters`.
 
@@ -3045,7 +3059,7 @@ def stats(self):
 </details>
 </dd>
 <dt id="keras_nlp.preprocessing.text.Vectorizer.texts_to_vectors"><code class="name flex">
-<span>def <span class="ident">texts_to_vectors</span></span>(<span>self, texts, shape=None, padding='pre', truncating='post', pad_value=None)</span>
+<span>def <span class="ident">texts_to_vectors</span></span>(<span>self, texts, shape=None, padding='pre', truncating=(0, 1), pad_value=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Convert a list of texts to a 2D, 3D or 4D array.</p>
@@ -3080,7 +3094,7 @@ max_sentences, max_tokens, max_characters)</code>.</li>
 <dd>Defines the padding method when the length of tokens/characters
 is less than <code>max_tokens</code>/<code>max_characters</code>. The filling value is
 the value of the <code>pad_value</code> parameter.</dd>
-<dt><strong><code>truncating</code></strong> :&ensp;<code>str</code>, <code>options</code> {<code>'pre'</code>, <code>'post'</code>}, default <code>'pre'</code></dt>
+<dt><strong><code>truncating</code></strong> :&ensp;<code>tuple</code>, or <code>str</code> <code>with</code> <code>options</code> {<code>'pre'</code>, <code>'post'</code>}, default (<code>0</code>, <code>1</code>)</dt>
 <dd>Defines the cutting method when
 the length of tokens/characters
 is larger than <code>max_tokens/characters</code>.</dd>
@@ -3090,7 +3104,7 @@ then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
-<dt><strong><code>ndarray</code></strong> :&ensp;<code>Numpy</code> <code>array</code> <code>with</code> <code>shape</code> <code>shape</code></dt>
+<dt><strong><code>ndarray</code></strong> :&ensp;<code>Numpy</code> <code>array</code> <code>with</code> <code>shape</code> <code>len`(`texts`) `x` `shape</code></dt>
 <dd>&nbsp;</dd>
 </dl>
 <h2 id="raises">Raises</h2>
@@ -3104,7 +3118,7 @@ def texts_to_vectors(self,
                      texts,
                      shape=None,
                      padding=&#39;pre&#39;,
-                     truncating=&#39;post&#39;,
+                     truncating=(0, 1),
                      pad_value=None):
     &#34;&#34;&#34;
     Convert a list of texts to a 2D, 3D or 4D array.
@@ -3138,7 +3152,7 @@ def texts_to_vectors(self,
         is less than `max_tokens`/`max_characters`. The filling value is
         the value of the `pad_value` parameter.
 
-    truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default &#39;pre&#39;
+    truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
         Defines the cutting method when  the length of tokens/characters
         is larger than `max_tokens/characters`.
 
@@ -3148,7 +3162,7 @@ def texts_to_vectors(self,
 
     Returns
     -------
-    ndarray : Numpy array with shape `shape`
+    ndarray : Numpy array with shape `len(texts) x shape`
 
     Raises
     ------
@@ -3196,12 +3210,10 @@ max_sentences, max_tokens, max_characters)</code>.</li>
 <dd>Defines the padding method when the length of tokens/characters
 is less than <code>max_tokens</code>/<code>max_characters</code>. The filling value is
 the value of the <code>pad_value</code> parameter.</dd>
-</dl>
-<p>truncating : str, options {'pre', 'post'}, default <code>(0, 1)</code>.
-Defines the cutting method when
+<dt><strong><code>truncating</code></strong> :&ensp;<code>tuple</code>, or <code>str</code> <code>with</code> <code>options</code> {<code>'pre'</code>, <code>'post'</code>}, default (<code>0</code>, <code>1</code>)</dt>
+<dd>Defines the cutting method when
 the length of tokens/characters
-is larger than <code>max_tokens/characters</code>.</p>
-<dl>
+is larger than <code>max_tokens/characters</code>.</dd>
 <dt><strong><code>pad_value</code></strong> :&ensp;<code>int</code>, default <code>None</code></dt>
 <dd>The value to use when padding is needed. If the value is <code>None</code>
 then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd>
@@ -3260,7 +3272,7 @@ then the <code>token2id['_PAD_']</code> value is used which by default is 0.</dd
         is less than `max_tokens`/`max_characters`. The filling value is
         the value of the `pad_value` parameter.
 
-    truncating : str, options {&#39;pre&#39;, &#39;post&#39;}, default `(0, 1)`.
+    truncating : tuple, or str with options {&#39;pre&#39;, &#39;post&#39;}, default (0, 1)
         Defines the cutting method when  the length of tokens/characters
         is larger than `max_tokens/characters`.
 

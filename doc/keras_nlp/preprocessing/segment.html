@@ -55,9 +55,20 @@ def sent_tokenize(
     See Also
     --------
     `https://stackoverflow.com/a/25736082/1143894`_
+
+    Examples
+    --------
+    &gt;&gt;&gt; doc = &#34;MI patients had 18% higher plasma levels of MAp44 &#34;\
+    &#34;(IQR 11-25%) as compared to the healthy control group (p &lt; 0.001). &#34;\
+    &#34;However, neither salvage index (Spearman rho -0.1, p = 0.28) &#34; \
+    &#34;nor final infarct size (Spearman rho 0.02, p = 0.83) correlated &#34;\
+    &#34;with plasma levels of MAp44.&#34;
+    &gt;&gt;&gt; sents = sent_tokenize(doc)
+    &gt;&gt;&gt; print(len(sents))
+    2
     &#34;&#34;&#34;
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
-    return substitutions.split(subst)
+    return list(substitutions.split(subst))
 
 
 def word_tokenize(text, regex=&#34;\W+|\t|\n&#34;):
@@ -170,7 +181,7 @@ class SentenceSplitter:
             A list of sentences.
         &#34;&#34;&#34;
         sents = []
-        subtext = re.sub(&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
+        subtext = re.sub(r&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
         if len(subtext) &gt; 0:
             ss = self._split_sentences(subtext)
             sents.extend([s for s in ss if (len(s.strip()) &gt; 0)])
@@ -213,7 +224,16 @@ sentence boundaries.</p>
 <dd>A list with the sentences of the text.</dd>
 </dl>
 <h2 id="see-also">See Also</h2>
-<p><code>`&lt;https://stackoverflow.com/a/25736082/1143894</code>_&gt;`</p></section>
+<p><code>`&lt;https://stackoverflow.com/a/25736082/1143894</code>_&gt;`</p>
+<h2 id="examples">Examples</h2>
+<pre><code>&gt;&gt;&gt; doc = "MI patients had 18% higher plasma levels of MAp44 "    "(IQR 11-25%) as compared to the healthy control group (p &lt; 0.001). "    "However, neither salvage index (Spearman rho -0.1, p = 0.28) "     "nor final infarct size (Spearman rho 0.02, p = 0.83) correlated "    "with plasma levels of MAp44."
+&gt;&gt;&gt; sents = sent_tokenize(doc)
+&gt;&gt;&gt; print(len(sents))
+**`2`**
+</code></pre>
+<dl>
+<dd>&nbsp;</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -246,9 +266,20 @@ sentence boundaries.</p>
     See Also
     --------
     `https://stackoverflow.com/a/25736082/1143894`_
+
+    Examples
+    --------
+    &gt;&gt;&gt; doc = &#34;MI patients had 18% higher plasma levels of MAp44 &#34;\
+    &#34;(IQR 11-25%) as compared to the healthy control group (p &lt; 0.001). &#34;\
+    &#34;However, neither salvage index (Spearman rho -0.1, p = 0.28) &#34; \
+    &#34;nor final infarct size (Spearman rho 0.02, p = 0.83) correlated &#34;\
+    &#34;with plasma levels of MAp44.&#34;
+    &gt;&gt;&gt; sents = sent_tokenize(doc)
+    &gt;&gt;&gt; print(len(sents))
+    2
     &#34;&#34;&#34;
     substitutions = re.sub(regex, subst, text, 0, re.MULTILINE)
-    return substitutions.split(subst)</code></pre>
+    return list(substitutions.split(subst))</code></pre>
 </details>
 </dd>
 <dt id="keras_nlp.preprocessing.segment.word_tokenize"><code class="name flex">
@@ -412,7 +443,7 @@ segmentation especially in scientific papers.</p>
             A list of sentences.
         &#34;&#34;&#34;
         sents = []
-        subtext = re.sub(&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
+        subtext = re.sub(r&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
         if len(subtext) &gt; 0:
             ss = self._split_sentences(subtext)
             sents.extend([s for s in ss if (len(s.strip()) &gt; 0)])
@@ -456,7 +487,7 @@ segmentation especially in scientific papers.</p>
         A list of sentences.
     &#34;&#34;&#34;
     sents = []
-    subtext = re.sub(&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
+    subtext = re.sub(r&#39;\s+&#39;, &#39; &#39;, text.replace(&#39;\n&#39;, &#39; &#39;)).strip()
     if len(subtext) &gt; 0:
         ss = self._split_sentences(subtext)
         sents.extend([s for s in ss if (len(s.strip()) &gt; 0)])

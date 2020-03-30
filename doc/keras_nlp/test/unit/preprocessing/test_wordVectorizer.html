@@ -84,7 +84,7 @@ class TestWordVectorizerWithDefaultValues(TestCase):
         expected_docs = [
             self.vectorizer._apply_filters(doc).split() for doc in DOCS
         ]
-        self.assertListEqual(docs, expected_docs)
+        self.assertListEqual(list(docs), expected_docs)
 
 
 class TestWordVectorizerWithSmallValues(TestCase):
@@ -115,9 +115,15 @@ class TestWordVectorizerWithSmallValues(TestCase):
         avg = int(sum(sents_len) / len(sents_len))
         target_shape = (avg, )
         truncating_shape = (0.5, 0.5)
-        vectors = vectorizer.texts_to_vectors(doc_sents,
-                                              shape=target_shape,
-                                              truncating=truncating_shape)
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
+
+        # Check with an even number of words in sentence and 50/50 truncating.
+        target_shape = (avg - 1, )
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
         # Don&#39;t consider the number of texts.
         self.assertTupleEqual(vectors.shape[1:], target_shape)
 
@@ -183,10 +189,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -317,10 +323,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -358,7 +364,7 @@ not have a method with the specified name.</p></section>
         expected_docs = [
             self.vectorizer._apply_filters(doc).split() for doc in DOCS
         ]
-        self.assertListEqual(docs, expected_docs)</code></pre>
+        self.assertListEqual(list(docs), expected_docs)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -429,7 +435,7 @@ not have a method with the specified name.</p></section>
     expected_docs = [
         self.vectorizer._apply_filters(doc).split() for doc in DOCS
     ]
-    self.assertListEqual(docs, expected_docs)</code></pre>
+    self.assertListEqual(list(docs), expected_docs)</code></pre>
 </details>
 </dd>
 </dl>
@@ -455,10 +461,10 @@ should not change the signature of their <strong>init</strong> method, since ins
 of the classes are instantiated automatically by parts of the framework
 in order to be run.</p>
 <p>When subclassing TestCase, you can set these attributes:
-<em> failureException: determines which exception will be raised when
+* failureException: determines which exception will be raised when
 the instance's assertion methods fail; test methods raising this
 exception will be deemed to have 'failed' rather than 'errored'.
-</em> longMessage: determines whether long messages (including repr of
+* longMessage: determines whether long messages (including repr of
 objects used in assert methods) will be printed on failure in <em>addition</em>
 to any explicit message passed.
 * maxDiff: sets the maximum length of a diff in failure messages
@@ -499,9 +505,15 @@ not have a method with the specified name.</p></section>
         avg = int(sum(sents_len) / len(sents_len))
         target_shape = (avg, )
         truncating_shape = (0.5, 0.5)
-        vectors = vectorizer.texts_to_vectors(doc_sents,
-                                              shape=target_shape,
-                                              truncating=truncating_shape)
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
+        # Don&#39;t consider the number of texts.
+        self.assertTupleEqual(vectors.shape[1:], target_shape)
+
+        # Check with an even number of words in sentence and 50/50 truncating.
+        target_shape = (avg - 1, )
+        vectors = vectorizer.texts_to_vectors(
+            doc_sents, shape=target_shape, truncating=truncating_shape)
         # Don&#39;t consider the number of texts.
         self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
@@ -543,9 +555,15 @@ not have a method with the specified name.</p></section>
     avg = int(sum(sents_len) / len(sents_len))
     target_shape = (avg, )
     truncating_shape = (0.5, 0.5)
-    vectors = vectorizer.texts_to_vectors(doc_sents,
-                                          shape=target_shape,
-                                          truncating=truncating_shape)
+    vectors = vectorizer.texts_to_vectors(
+        doc_sents, shape=target_shape, truncating=truncating_shape)
+    # Don&#39;t consider the number of texts.
+    self.assertTupleEqual(vectors.shape[1:], target_shape)
+
+    # Check with an even number of words in sentence and 50/50 truncating.
+    target_shape = (avg - 1, )
+    vectors = vectorizer.texts_to_vectors(
+        doc_sents, shape=target_shape, truncating=truncating_shape)
     # Don&#39;t consider the number of texts.
     self.assertTupleEqual(vectors.shape[1:], target_shape)</code></pre>
 </details>
