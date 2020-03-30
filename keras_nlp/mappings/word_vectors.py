@@ -36,7 +36,11 @@ class WordVectors(abc.ABC):
     >>> assert embedding_layer.input_dim = word_vectorizer.num_tokens
     """
 
-    def __init__(self, vocab, oov_token=None, replace_oov_method='same'):
+    def __init__(self,
+                 vocab,
+                 oov_token=None,
+                 replace_oov_method='same',
+                 verbose=1):
         """
         Parameters
         ----------
@@ -53,6 +57,9 @@ class WordVectors(abc.ABC):
             oov tokens will have the save vector. If 'random' each oov token
             will get a random vector.
 
+        verbose : int in [0, 2], default 1
+            The verbosity of the output during the vectorization methods.
+            
         Raises
         ------
         ValueError
@@ -65,6 +72,7 @@ class WordVectors(abc.ABC):
                              '`replace_oov_method`. Valid options are: '
                              '"same", "random"'.format(replace_oov_method))
         self.replace_oov_method = replace_oov_method
+        self.verbose = verbose
         self.vector_len = 0
         self.vectors = None
 
@@ -197,7 +205,9 @@ class Glove(WordVectors):
         """
         line_no = 1
         with open(file_path, 'r') as f:
-            self.logger.info(f'Loading word vectors from file "{file_path}".')
+            if self.verbose:
+                self.logger.info('Loading {} word vectors from "{}".'.format(
+                    len(self.vocab), file_path))
             # Read the first line to find the vectors length.
             line = f.readline()
             values = line.split()
@@ -206,7 +216,8 @@ class Glove(WordVectors):
             # Create the vocab's vector array.
             oov_id = self._init_vectors()
             # Initialize progress bar.
-            progbar = Progbar(len(self.vocab) - 1)  # -PAD
+            progbar = Progbar(
+                len(self.vocab) - 1, verbose=self.verbose)  # -PAD
             found = 1
             # Proceed with the rest file.
             while True:
@@ -235,8 +246,12 @@ class Glove(WordVectors):
 class W2V(WordVectors):
     """ Load word vectors from a Word2Vec file. """
 
-    def __init__(self, vocab, oov_token=None, replace_oov_method='same'):
-        super().__init__(vocab, oov_token, replace_oov_method)
+    def __init__(self,
+                 vocab,
+                 oov_token=None,
+                 replace_oov_method='same',
+                 verbose=1):
+        super().__init__(vocab, oov_token, replace_oov_method, verbose)
 
     def load(self, file_path, binary=False):
         """
@@ -272,10 +287,11 @@ class W2V(WordVectors):
                 header += c
 
             num_vectors, self.vector_len = (int(x) for x in header.split())
-            self.logger.info(f'Loading {num_vectors} word vectors from file '
-                             f'"{file_path}".')
+            if self.verbose:
+                self.logger.info('Loading {} word vectors from "{}".'.format(
+                    len(self.vocab), file_path))
             oov_id = self._init_vectors()
-            progbar = Progbar(len(self.vocab) - 1)
+            progbar = Progbar(len(self.vocab) - 1, verbose=self.verbose)
             found = 1
             for i in range(num_vectors):
                 word = ""
@@ -305,11 +321,13 @@ class W2V(WordVectors):
         with open(file_path, 'r', encoding='utf-8') as f:
             line = f.readline()
             num_vectors, self.vector_len = (int(x) for x in line.split())
-            self.logger.info(f'Loading {num_vectors} word vectors from file '
-                             f'"{file_path}".')
+            if self.verbose:
+                self.logger.info(
+                    f'Loading {num_vectors} word vectors from file '
+                    f'"{file_path}".')
             oov_id = self._init_vectors()
             found = 1
-            progbar = Progbar(len(self.vocab) - 1)
+            progbar = Progbar(len(self.vocab) - 1, verbose=self.verbose)
             for i in range(num_vectors):
                 line = f.readline()
                 values = line.split()
