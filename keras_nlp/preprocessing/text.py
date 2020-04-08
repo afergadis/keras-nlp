@@ -3,7 +3,7 @@ import abc
 import re
 import numpy as np
 from collections import Counter
-from keras.utils.generic_utils import Progbar
+from tensorflow_core.python.keras.utils.generic_utils import Progbar
 from keras_nlp.preprocessing import segment
 
 

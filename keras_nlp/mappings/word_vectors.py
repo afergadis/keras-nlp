@@ -2,8 +2,8 @@ import abc
 import struct
 import logging
 import numpy as np
-from keras.utils.generic_utils import Progbar
-from keras.layers import Embedding
+from tensorflow_core.python.keras.layers import Embedding
+from tensorflow_core.python.keras.utils.generic_utils import Progbar
 
 
 class WordVectors(abc.ABC):

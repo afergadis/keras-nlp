@@ -82,7 +82,9 @@ class TestWordVectorizerWithSmallValues(TestCase):
 
     def test_vectors_to_text_truncating_offsets(self):
         vectorizer = WordVectorizer()
-        doc = open(path.join(path.dirname(__file__), 'lorem_ipsum.txt')).read()
+        fh = open(path.join(path.dirname(__file__), 'lorem_ipsum.txt'))
+        doc = fh.read()
+        fh.close()
         doc_sents = sent_tokenize(doc)
         vectorizer.fit_on_texts(doc_sents)
         sents_len = [len(s.split()) for s in doc_sents]  # In words.
