@@ -230,15 +230,8 @@ class Vectorizer:
                             'beginning and one for the end.')
                     if sum(truncating) != 1:
                         raise ValueError('`truncating` should sum to 1.')
-                    # In case maxlen is odd and truncating tuple is (0.5, 0.5)
-                    # we have pre == post and pre + post > max_len.
-                    # E.g., maxlen=15, pre=round(15 * 0.5)=round(7,5)=8 and
-                    # post=np.ceil(7.5)=8
-                    # A work around is to change the tuple to (0.49, 0.51).
-                    if maxlen % 2 and truncating[0] == truncating[1]:
-                        truncating = (0.49, 0.51)
                     pre = round(maxlen * truncating[0])
-                    post = int(np.ceil(maxlen * truncating[1]))
+                    post = maxlen - pre
                     if post == 0:
                         array[idx, :] = seq[:pre]
                     else:
@@ -314,7 +307,7 @@ class Vectorizer:
                 if sum(truncating) != 1:
                     raise ValueError('`truncating` should sum to 1.')
                 pre = round(target_shape[0] * truncating[0])
-                post = int(np.ceil(target_shape[0] * truncating[1]))
+                post = target_shape[0] - pre
                 # Mask the values between pre and post to False.
                 mask = np.ones(len(vectors), dtype=bool)
                 mask[range(pre, len(vectors) - post)] = False

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='keras_nlp',
-    version='0.2.3',
+    version='0.2.4',
     url='',
     license='',
     author='Aris Fergadis',
